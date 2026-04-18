@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: vents
+    description: Vent journal LLM analysis
 paths:
   /healthz:
     get:
@@ -24,6 +26,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /vents/analyze:
+    post:
+      operationId: analyzeVent
+      tags: [vents]
+      summary: Analyze a vent transcript
+      description: |
+        Runs LLM analysis on a vent transcript using the user's PCOS context
+        (cycle phase, diet, energy, tracked concerns, recent vents) and returns
+        structured detections plus a phase-aware coaching response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeVentRequest"
+      responses:
+        "200":
+          description: Structured analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysis"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
+        "503":
+          description: LLM upstream unavailable; client should fall back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +69,142 @@ components:
           type: string
       required:
         - status
+    SymptomTag:
+      type: string
+      enum:
+        - cravings
+        - bloating
+        - fatigue
+        - anxiety
+        - sad
+        - happy
+        - energetic
+        - cramps
+        - headache
+        - acne
+        - insomnia
+        - soreness
+        - horny
+    HabitTag:
+      type: string
+      enum:
+        - water
+        - walk
+        - stretch
+        - meditate
+        - protein
+        - sleep
+    CyclePhase:
+      type: string
+      enum: [menstrual, follicular, ovulatory, luteal]
+    ConcernKey:
+      type: string
+      enum:
+        - acne
+        - hair-loss
+        - hirsutism
+        - irregular-cycle
+        - weight-belly
+        - fatigue
+        - cravings
+        - insomnia
+        - anxiety
+        - dark-patches
+    AnalyzeVentContext:
+      type: object
+      properties:
+        phase:
+          $ref: "#/components/schemas/CyclePhase"
+        dayOfCycle:
+          type: integer
+          minimum: 1
+        cycleLength:
+          type: integer
+          minimum: 14
+        diet:
+          type: string
+        homeCountry:
+          type: string
+        travelling:
+          type: boolean
+        travelCountry:
+          type: string
+          nullable: true
+        energy:
+          type: integer
+          minimum: 1
+          maximum: 5
+        trackedConcerns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConcernKey"
+        recentVentTexts:
+          type: array
+          items:
+            type: string
+          maxItems: 5
+      required:
+        - phase
+        - dayOfCycle
+        - cycleLength
+        - diet
+        - homeCountry
+        - travelling
+        - energy
+        - trackedConcerns
+        - recentVentTexts
+    AnalyzeVentRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 2
+          maxLength: 2000
+        context:
+          $ref: "#/components/schemas/AnalyzeVentContext"
+      required:
+        - text
+        - context
+    VentAnalysis:
+      type: object
+      properties:
+        symptoms:
+          type: array
+          items:
+            $ref: "#/components/schemas/SymptomTag"
+        habits:
+          type: array
+          items:
+            $ref: "#/components/schemas/HabitTag"
+        headline:
+          type: string
+        explanation:
+          type: string
+        followUp:
+          type: object
+          nullable: true
+          properties:
+            concern:
+              $ref: "#/components/schemas/ConcernKey"
+            label:
+              type: string
+          required:
+            - concern
+            - label
+      required:
+        - symptoms
+        - habits
+        - headline
+        - explanation
+    VentAnalysisError:
+      type: object
+      properties:
+        code:
+          type: string
+          enum: [bad_request, llm_unavailable, llm_timeout, internal]
+        message:
+          type: string
+      required:
+        - code
+        - message
 

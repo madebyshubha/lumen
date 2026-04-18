@@ -6,4 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./analyzeVentContext";
+export * from "./analyzeVentRequest";
+export * from "./concernKey";
+export * from "./cyclePhase";
+export * from "./habitTag";
 export * from "./healthStatus";
+export * from "./symptomTag";
+export * from "./ventAnalysis";
+export * from "./ventAnalysisError";
+export * from "./ventAnalysisErrorCode";
+export * from "./ventAnalysisFollowUp";

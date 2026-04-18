@@ -8,3 +8,113 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type SymptomTag = (typeof SymptomTag)[keyof typeof SymptomTag];
+
+export const SymptomTag = {
+  cravings: "cravings",
+  bloating: "bloating",
+  fatigue: "fatigue",
+  anxiety: "anxiety",
+  sad: "sad",
+  happy: "happy",
+  energetic: "energetic",
+  cramps: "cramps",
+  headache: "headache",
+  acne: "acne",
+  insomnia: "insomnia",
+  soreness: "soreness",
+  horny: "horny",
+} as const;
+
+export type HabitTag = (typeof HabitTag)[keyof typeof HabitTag];
+
+export const HabitTag = {
+  water: "water",
+  walk: "walk",
+  stretch: "stretch",
+  meditate: "meditate",
+  protein: "protein",
+  sleep: "sleep",
+} as const;
+
+export type CyclePhase = (typeof CyclePhase)[keyof typeof CyclePhase];
+
+export const CyclePhase = {
+  menstrual: "menstrual",
+  follicular: "follicular",
+  ovulatory: "ovulatory",
+  luteal: "luteal",
+} as const;
+
+export type ConcernKey = (typeof ConcernKey)[keyof typeof ConcernKey];
+
+export const ConcernKey = {
+  acne: "acne",
+  "hair-loss": "hair-loss",
+  hirsutism: "hirsutism",
+  "irregular-cycle": "irregular-cycle",
+  "weight-belly": "weight-belly",
+  fatigue: "fatigue",
+  cravings: "cravings",
+  insomnia: "insomnia",
+  anxiety: "anxiety",
+  "dark-patches": "dark-patches",
+} as const;
+
+export interface AnalyzeVentContext {
+  phase: CyclePhase;
+  /** @minimum 1 */
+  dayOfCycle: number;
+  /** @minimum 14 */
+  cycleLength: number;
+  diet: string;
+  homeCountry: string;
+  travelling: boolean;
+  travelCountry?: string | null;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  energy: number;
+  trackedConcerns: ConcernKey[];
+  /** @maxItems 5 */
+  recentVentTexts: string[];
+}
+
+export interface AnalyzeVentRequest {
+  /**
+   * @minLength 2
+   * @maxLength 2000
+   */
+  text: string;
+  context: AnalyzeVentContext;
+}
+
+export type VentAnalysisFollowUp = {
+  concern: ConcernKey;
+  label: string;
+} | null;
+
+export interface VentAnalysis {
+  symptoms: SymptomTag[];
+  habits: HabitTag[];
+  headline: string;
+  explanation: string;
+  followUp?: VentAnalysisFollowUp;
+}
+
+export type VentAnalysisErrorCode =
+  (typeof VentAnalysisErrorCode)[keyof typeof VentAnalysisErrorCode];
+
+export const VentAnalysisErrorCode = {
+  bad_request: "bad_request",
+  llm_unavailable: "llm_unavailable",
+  llm_timeout: "llm_timeout",
+  internal: "internal",
+} as const;
+
+export interface VentAnalysisError {
+  code: VentAnalysisErrorCode;
+  message: string;
+}

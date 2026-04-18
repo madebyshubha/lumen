@@ -60,6 +60,12 @@ export type VentEntry = {
   phase: CyclePhase;
   fix: string;
   createdAt: string;
+  // LLM analysis fields (optional for backwards compatibility with older
+  // entries persisted before the analyzer rolled out).
+  headline?: string;
+  explanation?: string;
+  followUp?: { concern: ConcernKey; label: string } | null;
+  analyzedOffline?: boolean;
 };
 
 export type DailyLog = {
@@ -96,7 +102,8 @@ type AppContextValue = {
     homeCountry: CountryCode;
   }) => Promise<void>;
   signOut: () => Promise<void>;
-  addVent: (entry: Omit<VentEntry, "id" | "createdAt">) => Promise<void>;
+  addVent: (entry: Omit<VentEntry, "id" | "createdAt">) => Promise<string>;
+  updateVent: (id: string, partial: Partial<VentEntry>) => Promise<void>;
   setMood: (mood: number) => Promise<void>;
   toggleTask: (taskId: string) => Promise<void>;
   addWater: (delta: number) => Promise<void>;
@@ -388,8 +395,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           : log.waterCups;
         return { ...log, completedHabits: habits, completedTaskIds, waterCups };
       });
+
+      return v.id;
     },
     [upsertTodayLog, matchHabitsToTaskIds],
+  );
+
+  const updateVent: AppContextValue["updateVent"] = useCallback(
+    async (id, partial) => {
+      setVents((prev) =>
+        prev.map((v) => (v.id === id ? { ...v, ...partial } : v)),
+      );
+    },
+    [],
   );
 
   const setMood: AppContextValue["setMood"] = useCallback(
@@ -523,6 +541,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding,
       signOut,
       addVent,
+      updateVent,
       setMood,
       toggleTask,
       addWater,
@@ -536,7 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
-      completeOnboarding, signOut, addVent, setMood, toggleTask, addWater, addSleep,
+      completeOnboarding, signOut, addVent, updateVent, setMood, toggleTask, addWater, addSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
     ],
   );

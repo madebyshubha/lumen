@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,28 +18,35 @@ import { MicButton } from "@/components/MicButton";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
-import {
-  extractHabits,
-  extractSymptoms,
-  HABIT_LABEL,
-  pcosFix,
-  SYMPTOM_LABEL,
-} from "@/lib/symptoms";
+import { runVentAnalysis } from "@/lib/analyzer";
+import { HABIT_LABEL, SYMPTOM_LABEL } from "@/lib/symptoms";
 import { isVoiceAvailable, startVoice, type VoiceSession } from "@/lib/voice";
 
 export default function VentScreen() {
   const palette = usePalette();
-  const { cycle, vents, addVent } = useApp();
+  const {
+    cycle,
+    profile,
+    vents,
+    todayLog,
+    addVent,
+    updateVent,
+    addConcern,
+  } = useApp();
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
-  const [lastFix, setLastFix] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [lastVentId, setLastVentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef<VoiceSession | null>(null);
   const voice = isVoiceAvailable();
 
   useEffect(() => () => sessionRef.current?.stop(), []);
 
-  if (!cycle) return null;
+  if (!cycle || !profile) return null;
+
+  const lastVent = lastVentId ? vents.find((v) => v.id === lastVentId) ?? null : null;
+  const trackedConcernKeys = todayLog.context.concerns.map((c) => c.key);
 
   const start = () => {
     setError(null);
@@ -57,7 +65,6 @@ export default function VentScreen() {
       sessionRef.current = session;
       setRecording(true);
     } else {
-      // On native, "tap to record" toggles a typing affordance for the prototype.
       setRecording(true);
     }
   };
@@ -70,17 +77,72 @@ export default function VentScreen() {
 
   const submit = async () => {
     const cleaned = text.trim();
-    if (!cleaned) return;
-    const symptoms = extractSymptoms(cleaned);
-    const habits = extractHabits(cleaned);
-    const fix = pcosFix(cycle.phase, symptoms);
-    await addVent({ text: cleaned, symptoms, habits, phase: cycle.phase, fix });
-    setLastFix(fix);
-    setText("");
+    if (!cleaned || analyzing) return;
+
+    setAnalyzing(true);
+    try {
+      const result = await runVentAnalysis({
+        text: cleaned,
+        phase: cycle.phase,
+        dayOfCycle: cycle.dayOfCycle,
+        cycleLength: profile.cycleLength,
+        diet: profile.diet,
+        homeCountry: profile.homeCountry,
+        travelling: todayLog.context.travelling,
+        travelCountry: todayLog.context.travelCountry,
+        energy: profile.energy,
+        trackedConcerns: trackedConcernKeys,
+        recentVentTexts: vents.slice(0, 5).map((v) => v.text),
+      });
+
+      const newId = await addVent({
+        text: cleaned,
+        symptoms: result.symptoms,
+        habits: result.habits,
+        phase: cycle.phase,
+        fix: result.explanation,
+        headline: result.headline,
+        explanation: result.explanation,
+        followUp: result.followUp,
+        analyzedOffline: result.analyzedOffline,
+      });
+      setLastVentId(newId);
+
+      setText("");
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      if (recording) stop();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't analyze. Try again.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const dismissSymptom = (id: string, tag: string) => {
+    if (analyzing) return;
+    const v = vents.find((x) => x.id === id);
+    if (!v) return;
+    updateVent(id, { symptoms: v.symptoms.filter((s) => s !== tag) });
+  };
+
+  const dismissHabit = (id: string, tag: string) => {
+    if (analyzing) return;
+    const v = vents.find((x) => x.id === id);
+    if (!v) return;
+    updateVent(id, { habits: v.habits.filter((h) => h !== tag) });
+  };
+
+  const trackConcern = async (id: string, concern: string, label: string) => {
+    if (!trackedConcernKeys.includes(concern as (typeof trackedConcernKeys)[number])) {
+      await addConcern(concern as (typeof trackedConcernKeys)[number]);
+    }
+    // Mark the followUp as consumed so the CTA disappears.
+    updateVent(id, { followUp: null });
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    if (recording) stop();
   };
 
   return (
@@ -102,8 +164,8 @@ export default function VentScreen() {
               </Text>
               <Text style={[styles.sub, { color: palette.textMuted }]}>
                 {voice
-                  ? "Tap the mic and just talk. I'll catch the symptoms."
-                  : "Tap the mic, then type a sentence. I'll catch the symptoms."}
+                  ? "Tap the mic and just talk. I'll read between the lines."
+                  : "Tap the mic, then type a sentence. I'll read between the lines."}
               </Text>
 
               <View style={styles.micArea}>
@@ -120,12 +182,14 @@ export default function VentScreen() {
                 placeholder="I'm feeling bloated and craving sugar…"
                 placeholderTextColor={palette.textMuted}
                 multiline
+                editable={!analyzing}
                 style={[
                   styles.input,
                   {
                     color: palette.text,
                     borderColor: palette.glassBorder,
                     backgroundColor: palette.surfaceMuted,
+                    opacity: analyzing ? 0.6 : 1,
                   },
                 ]}
               />
@@ -136,40 +200,139 @@ export default function VentScreen() {
 
               <Pressable
                 onPress={submit}
-                disabled={!text.trim()}
+                disabled={!text.trim() || analyzing}
                 style={({ pressed }) => [
                   styles.submit,
                   {
-                    backgroundColor: text.trim() ? palette.primary : palette.surface,
+                    backgroundColor: text.trim() && !analyzing ? palette.primary : palette.surface,
                     opacity: pressed ? 0.85 : 1,
                   },
                 ]}
               >
-                <Feather
-                  name="check"
-                  size={16}
-                  color={text.trim() ? (palette.isDark ? "#0f1024" : "#ffffff") : palette.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.submitText,
-                    { color: text.trim() ? (palette.isDark ? "#0f1024" : "#ffffff") : palette.textMuted },
-                  ]}
-                >
-                  Log it
-                </Text>
+                {analyzing ? (
+                  <>
+                    <ActivityIndicator
+                      size="small"
+                      color={palette.isDark ? "#0f1024" : "#ffffff"}
+                    />
+                    <Text
+                      style={[
+                        styles.submitText,
+                        { color: palette.isDark ? "#0f1024" : "#ffffff" },
+                      ]}
+                    >
+                      Reading your vent…
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Feather
+                      name="check"
+                      size={16}
+                      color={text.trim() ? (palette.isDark ? "#0f1024" : "#ffffff") : palette.textMuted}
+                    />
+                    <Text
+                      style={[
+                        styles.submitText,
+                        { color: text.trim() ? (palette.isDark ? "#0f1024" : "#ffffff") : palette.textMuted },
+                      ]}
+                    >
+                      Log it
+                    </Text>
+                  </>
+                )}
               </Pressable>
             </GlassCard>
 
-            {lastFix ? (
+            {lastVent ? (
               <GlassCard style={{ marginTop: 14 }}>
                 <View style={styles.fixHead}>
                   <View style={[styles.fixIcon, { backgroundColor: palette.accentSoft }]}>
                     <Feather name="zap" size={14} color={palette.primary} />
                   </View>
-                  <Text style={[styles.fixLabel, { color: palette.textMuted }]}>PCOS fix</Text>
+                  <Text style={[styles.fixLabel, { color: palette.textMuted }]}>
+                    {lastVent.analyzedOffline ? "Quick read (offline)" : "What I noticed"}
+                  </Text>
                 </View>
-                <Text style={[styles.fixText, { color: palette.text }]}>{lastFix}</Text>
+                {lastVent.headline ? (
+                  <Text style={[styles.headline, { color: palette.text }]}>
+                    {lastVent.headline}
+                  </Text>
+                ) : null}
+                <Text style={[styles.fixText, { color: palette.text }]}>
+                  {lastVent.explanation ?? lastVent.fix}
+                </Text>
+
+                {(lastVent.symptoms.length > 0 || lastVent.habits.length > 0) && (
+                  <View style={styles.tagsRow}>
+                    {lastVent.symptoms.map((s) => (
+                      <Pressable
+                        key={`s-${s}`}
+                        onPress={() => dismissSymptom(lastVent.id, s)}
+                        style={[styles.tag, { backgroundColor: palette.accentSoft }]}
+                      >
+                        <Text style={[styles.tagText, { color: palette.text }]}>
+                          {SYMPTOM_LABEL[s]}
+                        </Text>
+                        <Feather name="x" size={11} color={palette.textMuted} />
+                      </Pressable>
+                    ))}
+                    {lastVent.habits.map((h) => (
+                      <Pressable
+                        key={`h-${h}`}
+                        onPress={() => dismissHabit(lastVent.id, h)}
+                        style={[
+                          styles.tag,
+                          { backgroundColor: palette.primary, borderColor: palette.primary },
+                        ]}
+                      >
+                        <Feather
+                          name="check"
+                          size={11}
+                          color={palette.isDark ? "#0f1024" : "#ffffff"}
+                        />
+                        <Text
+                          style={[
+                            styles.tagText,
+                            { color: palette.isDark ? "#0f1024" : "#ffffff" },
+                          ]}
+                        >
+                          {HABIT_LABEL[h]}
+                        </Text>
+                        <Feather
+                          name="x"
+                          size={11}
+                          color={palette.isDark ? "#0f1024" : "#ffffff"}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+
+                {lastVent.followUp ? (
+                  <Pressable
+                    onPress={() =>
+                      trackConcern(
+                        lastVent.id,
+                        lastVent.followUp!.concern,
+                        lastVent.followUp!.label,
+                      )
+                    }
+                    style={({ pressed }) => [
+                      styles.trackCta,
+                      {
+                        borderColor: palette.glassBorder,
+                        backgroundColor: palette.surfaceMuted,
+                        opacity: pressed ? 0.85 : 1,
+                      },
+                    ]}
+                  >
+                    <Feather name="plus-circle" size={14} color={palette.primary} />
+                    <Text style={[styles.trackText, { color: palette.text }]}>
+                      {lastVent.followUp.label}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </GlassCard>
             ) : null}
 
@@ -244,8 +407,10 @@ export default function VentScreen() {
                       </View>
                     )}
 
-                    {v.fix ? (
-                      <Text style={[styles.entryFix, { color: palette.textMuted }]}>{v.fix}</Text>
+                    {v.explanation ?? v.fix ? (
+                      <Text style={[styles.entryFix, { color: palette.textMuted }]}>
+                        {v.explanation ?? v.fix}
+                      </Text>
                     ) : null}
                   </GlassCard>
                 ))}
@@ -286,7 +451,19 @@ const styles = StyleSheet.create({
   fixHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   fixIcon: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   fixLabel: { fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", fontFamily: "Inter_500Medium" },
+  headline: { fontSize: 18, fontFamily: "Outfit_600SemiBold", marginBottom: 6, lineHeight: 24 },
   fixText: { fontSize: 15, fontFamily: "Outfit_500Medium", lineHeight: 22 },
+  trackCta: {
+    marginTop: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  trackText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   section: { fontSize: 16, fontFamily: "Outfit_600SemiBold", marginTop: 20, marginBottom: 12 },
   emptyTitle: { fontSize: 14, fontFamily: "Outfit_600SemiBold", marginBottom: 6 },
   emptyText: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },

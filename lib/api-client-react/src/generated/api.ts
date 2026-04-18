@@ -5,18 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  AnalyzeVentRequest,
+  HealthStatus,
+  VentAnalysis,
+  VentAnalysisError,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -99,3 +107,93 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Runs LLM analysis on a vent transcript using the user's PCOS context
+(cycle phase, diet, energy, tracked concerns, recent vents) and returns
+structured detections plus a phase-aware coaching response.
+
+ * @summary Analyze a vent transcript
+ */
+export const getAnalyzeVentUrl = () => {
+  return `/api/vents/analyze`;
+};
+
+export const analyzeVent = async (
+  analyzeVentRequest: AnalyzeVentRequest,
+  options?: RequestInit,
+): Promise<VentAnalysis> => {
+  return customFetch<VentAnalysis>(getAnalyzeVentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(analyzeVentRequest),
+  });
+};
+
+export const getAnalyzeVentMutationOptions = <
+  TError = ErrorType<VentAnalysisError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeVent>>,
+    TError,
+    { data: BodyType<AnalyzeVentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzeVent>>,
+  TError,
+  { data: BodyType<AnalyzeVentRequest> },
+  TContext
+> => {
+  const mutationKey = ["analyzeVent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzeVent>>,
+    { data: BodyType<AnalyzeVentRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return analyzeVent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzeVentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzeVent>>
+>;
+export type AnalyzeVentMutationBody = BodyType<AnalyzeVentRequest>;
+export type AnalyzeVentMutationError = ErrorType<VentAnalysisError>;
+
+/**
+ * @summary Analyze a vent transcript
+ */
+export const useAnalyzeVent = <
+  TError = ErrorType<VentAnalysisError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzeVent>>,
+    TError,
+    { data: BodyType<AnalyzeVentRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzeVent>>,
+  TError,
+  { data: BodyType<AnalyzeVentRequest> },
+  TContext
+> => {
+  return useMutation(getAnalyzeVentMutationOptions(options));
+};

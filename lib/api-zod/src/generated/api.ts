@@ -14,3 +14,92 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Runs LLM analysis on a vent transcript using the user's PCOS context
+(cycle phase, diet, energy, tracked concerns, recent vents) and returns
+structured detections plus a phase-aware coaching response.
+
+ * @summary Analyze a vent transcript
+ */
+export const analyzeVentBodyTextMin = 2;
+export const analyzeVentBodyTextMax = 2000;
+
+export const analyzeVentBodyContextCycleLengthMin = 14;
+
+export const analyzeVentBodyContextEnergyMax = 5;
+
+export const analyzeVentBodyContextRecentVentTextsMax = 5;
+
+export const AnalyzeVentBody = zod.object({
+  text: zod.string().min(analyzeVentBodyTextMin).max(analyzeVentBodyTextMax),
+  context: zod.object({
+    phase: zod.enum(["menstrual", "follicular", "ovulatory", "luteal"]),
+    dayOfCycle: zod.number().min(1),
+    cycleLength: zod.number().min(analyzeVentBodyContextCycleLengthMin),
+    diet: zod.string(),
+    homeCountry: zod.string(),
+    travelling: zod.boolean(),
+    travelCountry: zod.string().nullish(),
+    energy: zod.number().min(1).max(analyzeVentBodyContextEnergyMax),
+    trackedConcerns: zod.array(
+      zod.enum([
+        "acne",
+        "hair-loss",
+        "hirsutism",
+        "irregular-cycle",
+        "weight-belly",
+        "fatigue",
+        "cravings",
+        "insomnia",
+        "anxiety",
+        "dark-patches",
+      ]),
+    ),
+    recentVentTexts: zod
+      .array(zod.string())
+      .max(analyzeVentBodyContextRecentVentTextsMax),
+  }),
+});
+
+export const AnalyzeVentResponse = zod.object({
+  symptoms: zod.array(
+    zod.enum([
+      "cravings",
+      "bloating",
+      "fatigue",
+      "anxiety",
+      "sad",
+      "happy",
+      "energetic",
+      "cramps",
+      "headache",
+      "acne",
+      "insomnia",
+      "soreness",
+      "horny",
+    ]),
+  ),
+  habits: zod.array(
+    zod.enum(["water", "walk", "stretch", "meditate", "protein", "sleep"]),
+  ),
+  headline: zod.string(),
+  explanation: zod.string(),
+  followUp: zod
+    .object({
+      concern: zod.enum([
+        "acne",
+        "hair-loss",
+        "hirsutism",
+        "irregular-cycle",
+        "weight-belly",
+        "fatigue",
+        "cravings",
+        "insomnia",
+        "anxiety",
+        "dark-patches",
+      ]),
+      label: zod.string(),
+    })
+    .nullish(),
+});
