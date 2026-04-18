@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   iconWrap: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
   label: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   hint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
-  controls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  controls: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   btn: {
     width: 32,
     height: 32,
@@ -80,5 +80,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  value: { fontSize: 18, fontFamily: "Inter_700Bold", minWidth: 60, textAlign: "center" },
+  value: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+    minWidth: 0,
+  },
 });

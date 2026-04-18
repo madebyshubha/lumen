@@ -126,8 +126,18 @@ function Row({
       <View style={[rowStyles.iconWrap, { backgroundColor: palette.primarySoft }]}>
         <Feather name={icon} size={13} color={palette.primary} />
       </View>
-      <Text style={[rowStyles.label, { color: palette.textMuted }]}>{label}</Text>
-      <Text style={[rowStyles.value, { color: palette.text }]}>{value}</Text>
+      <Text
+        style={[rowStyles.label, { color: palette.textMuted }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[rowStyles.value, { color: palette.text }]}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -141,8 +151,11 @@ const rowStyles = StyleSheet.create({
     gap: 12,
   },
   iconWrap: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  label: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium" },
-  value: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  // `flex: 1` + `minWidth: 0` lets the label truncate instead of pushing the
+  // value off the right edge on narrow phones; value gets `flexShrink: 1` so
+  // long values (e.g. country names) collapse to ellipsis rather than overflow.
+  label: { flex: 1, minWidth: 0, fontSize: 13, fontFamily: "Inter_500Medium" },
+  value: { fontSize: 13, fontFamily: "Inter_600SemiBold", flexShrink: 1, maxWidth: "55%", textAlign: "right" },
 });
 
 const styles = StyleSheet.create({

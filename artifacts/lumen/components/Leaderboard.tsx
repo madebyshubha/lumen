@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "@/components/GlassCard";
-import { useApp, usePalette } from "@/context/AppContext";
+import { dateKey, useApp, usePalette } from "@/context/AppContext";
 import { buildLeaderboard, type LeaderboardRow } from "@/lib/circle";
 
 // Day-within-current-phase derived from cycle.dayOfCycle so the user's
@@ -35,16 +35,24 @@ export function Leaderboard() {
     [phase, streak.current, userPhaseDay],
   );
 
-  // Per-handle kudos counter (local, in-memory). Reset on app reload — fine
-  // for a prototype: it preserves the "win and help others win" gesture
-  // without faking persistent social state.
-  const [kudos, setKudos] = useState<Record<string, number>>({});
+  // Per-handle kudos counter, day-scoped: stored as { [yyyy-mm-dd]: { [id]: count } }
+  // so when the calendar day rolls over (even while the app stays open), each
+  // handle's counter resets to 0 for the new day. State is in-memory by design
+  // — kudos are a soft, ephemeral gesture, not persistent social currency.
+  const [kudosByDay, setKudosByDay] = useState<Record<string, Record<string, number>>>({});
   const [toast, setToast] = useState<string | null>(null);
+
+  const todayKey = dateKey(new Date());
+  const todaysKudos = kudosByDay[todayKey] ?? {};
 
   const sendKudos = (row: LeaderboardRow) => {
     if (row.isYou) return;
     if (Platform.OS !== "web") Haptics.selectionAsync();
-    setKudos((prev) => ({ ...prev, [row.id]: (prev[row.id] ?? 0) + 1 }));
+    setKudosByDay((prev) => {
+      const day = dateKey(new Date());
+      const dayMap = prev[day] ?? {};
+      return { ...prev, [day]: { ...dayMap, [row.id]: (dayMap[row.id] ?? 0) + 1 } };
+    });
     setToast(`Kudos sent to ${row.handle}`);
     setTimeout(() => setToast((t) => (t === `Kudos sent to ${row.handle}` ? null : t)), 1800);
   };
@@ -72,7 +80,7 @@ export function Leaderboard() {
           <Row
             key={row.id}
             row={row}
-            kudos={kudos[row.id] ?? 0}
+            kudos={todaysKudos[row.id] ?? 0}
             onKudos={() => sendKudos(row)}
           />
         ))}
@@ -85,7 +93,7 @@ export function Leaderboard() {
             </View>
             <Row
               row={board.you}
-              kudos={kudos[board.you.id] ?? 0}
+              kudos={todaysKudos[board.you.id] ?? 0}
               onKudos={() => sendKudos(board.you)}
             />
           </>
