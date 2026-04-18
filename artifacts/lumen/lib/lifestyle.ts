@@ -314,6 +314,28 @@ export const MEAL_SCORE_LABEL: Record<MealScore, string> = {
   spike: "Spike risk",
 };
 
+// ---- Concerns (chronic symptoms the user wants help with) ---------------
+// A concern is a chronic PCOS symptom the user has flagged. Each concern
+// loads a multi-step protocol (see lib/protocols.ts) and injects 1–2
+// concern-specific actions into today's mission until the user removes it.
+
+export type ConcernKey =
+  | "acne"
+  | "hair-loss"
+  | "hirsutism"
+  | "irregular-cycle"
+  | "weight-belly"
+  | "fatigue"
+  | "cravings"
+  | "insomnia"
+  | "anxiety"
+  | "dark-patches";
+
+export type ActiveConcern = {
+  key: ConcernKey;
+  startedAt: string; // ISO date
+};
+
 // ---- Daily context shape ------------------------------------------------
 
 export type DailyContext = {
@@ -321,9 +343,11 @@ export type DailyContext = {
   travelling: boolean;
   travelCountry?: CountryCode;
   meals: Meal[];
+  concerns: ActiveConcern[];
 };
 
 export const EMPTY_CONTEXT: DailyContext = {
   travelling: false,
   meals: [],
+  concerns: [],
 };

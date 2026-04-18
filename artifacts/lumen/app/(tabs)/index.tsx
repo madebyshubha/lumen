@@ -14,10 +14,11 @@ import { PhaseRing } from "@/components/PhaseRing";
 import { Stepper } from "@/components/Stepper";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
+import { concernLabel } from "@/lib/protocols";
 
 export default function DashboardScreen() {
   const palette = usePalette();
-  const { cycle, health, todayLog, addWater, addSleep, tasks } = useApp();
+  const { cycle, health, todayLog, addWater, addSleep, tasks, removeConcern } = useApp();
 
   if (!cycle || !health) return null;
 
@@ -77,6 +78,62 @@ export default function DashboardScreen() {
               />
             </View>
           </GlassCard>
+
+          {/* CARE CTA — gives the user a path when they have a chronic problem. */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/care")}
+            accessibilityRole="button"
+            accessibilityLabel="Open Care — get a PCOS plan for what's bothering you"
+            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1, marginBottom: 16 }]}
+          >
+            <GlassCard padding={14}>
+              <View style={styles.careRow}>
+                <View
+                  style={[styles.careIcon, { backgroundColor: palette.primarySoft }]}
+                >
+                  <Feather name="heart" size={16} color={palette.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.careTitle, { color: palette.text }]}>
+                    {todayLog.context.concerns.length > 0
+                      ? "Open your care plan"
+                      : "Something bothering you?"}
+                  </Text>
+                  <Text style={[styles.careSub, { color: palette.textMuted }]}>
+                    {todayLog.context.concerns.length > 0
+                      ? "Today's mission is tuned to it."
+                      : "Acne, hair loss, fatigue, cycle — get a real PCOS plan."}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={palette.textMuted} />
+              </View>
+              {todayLog.context.concerns.length > 0 ? (
+                <View style={styles.concernChips}>
+                  {todayLog.context.concerns.map((c) => (
+                    <Pressable
+                      key={c.key}
+                      onPress={() => removeConcern(c.key)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Stop tracking ${concernLabel(c.key)}`}
+                      style={({ pressed }) => [
+                        styles.concernChip,
+                        {
+                          backgroundColor: palette.surface,
+                          borderColor: palette.glassBorder,
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.concernChipText, { color: palette.text }]}>
+                        {concernLabel(c.key)}
+                      </Text>
+                      <Feather name="x" size={12} color={palette.textMuted} />
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </GlassCard>
+          </Pressable>
 
           {/* TODAY'S MISSION — the critical PCOS-targeted tasks, front and center. */}
           <View style={styles.sectionHead}>
@@ -304,4 +361,19 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   ventCtaText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  careRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  careIcon: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  careTitle: { fontSize: 14.5, fontFamily: "Inter_600SemiBold" },
+  careSub: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  concernChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 12 },
+  concernChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  concernChipText: { fontSize: 11.5, fontFamily: "Inter_500Medium" },
 });

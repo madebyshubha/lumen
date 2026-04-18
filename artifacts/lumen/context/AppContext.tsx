@@ -20,6 +20,8 @@ import {
 import {
   EMPTY_CONTEXT,
   scoreMeal,
+  type ActiveConcern,
+  type ConcernKey,
   type CountryCode,
   type DailyContext,
   type Diet,
@@ -94,6 +96,8 @@ type AppContextValue = {
   setTravelling: (travelling: boolean, country?: CountryCode) => Promise<void>;
   addMeal: (slot: MealSlot, text: string) => Promise<void>;
   removeMeal: (id: string) => Promise<void>;
+  addConcern: (key: ConcernKey) => Promise<void>;
+  removeConcern: (key: ConcernKey) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -133,6 +137,7 @@ function hydrateLog(raw: Partial<DailyLog> & { date: string }): DailyLog {
       location: raw.context?.location,
       travelCountry: raw.context?.travelCountry,
       meals: raw.context?.meals ?? [],
+      concerns: raw.context?.concerns ?? [],
     },
   };
 }
@@ -231,8 +236,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       homeCountry: profile.homeCountry,
       travelling: todayLog.context.travelling,
       travelCountry: todayLog.context.travelCountry,
+      concerns: todayLog.context.concerns,
     });
-  }, [cycle, profile, health, todayLog.context.travelling, todayLog.context.travelCountry]);
+  }, [
+    cycle,
+    profile,
+    health,
+    todayLog.context.travelling,
+    todayLog.context.travelCountry,
+    todayLog.context.concerns,
+  ]);
 
   const completeOnboarding: AppContextValue["completeOnboarding"] = useCallback(
     async ({ name, provider, energy, diet, homeCountry }) => {
@@ -400,6 +413,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [upsertTodayLog],
   );
 
+  const addConcern: AppContextValue["addConcern"] = useCallback(
+    async (key) => {
+      upsertTodayLog((log) => {
+        if (log.context.concerns.some((c) => c.key === key)) return log;
+        const concern: ActiveConcern = { key, startedAt: new Date().toISOString() };
+        return {
+          ...log,
+          context: { ...log.context, concerns: [...log.context.concerns, concern] },
+        };
+      });
+    },
+    [upsertTodayLog],
+  );
+
+  const removeConcern: AppContextValue["removeConcern"] = useCallback(
+    async (key) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        context: { ...log.context, concerns: log.context.concerns.filter((c) => c.key !== key) },
+      }));
+    },
+    [upsertTodayLog],
+  );
+
   const value = useMemo<AppContextValue>(
     () => ({
       ready,
@@ -421,11 +458,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setTravelling,
       addMeal,
       removeMeal,
+      addConcern,
+      removeConcern,
     }),
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks,
       completeOnboarding, signOut, addVent, setMood, toggleTask, addWater, addSleep,
-      setLocation, setTravelling, addMeal, removeMeal,
+      setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
     ],
   );
 

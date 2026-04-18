@@ -2,10 +2,12 @@ import type { CyclePhase } from "@/constants/colors";
 import {
   countryName,
   pickFor,
+  type ActiveConcern,
   type CountryCode,
   type Diet,
   DIET_LABEL,
 } from "@/lib/lifestyle";
+import { tasksForConcern } from "@/lib/protocols";
 import type { HabitTag } from "@/lib/symptoms";
 
 export type TaskPriority = "critical" | "important" | "gentle";
@@ -37,6 +39,7 @@ export type TaskContext = {
   homeCountry: CountryCode;
   travelling: boolean;
   travelCountry?: CountryCode;
+  concerns?: ActiveConcern[];
 };
 
 // ---- Phase-specific tasks ------------------------------------------------
@@ -133,6 +136,21 @@ export function generateDailyTasks(ctx: TaskContext): Task[] {
   const where = countryName(country);
 
   const tasks: Task[] = [];
+
+  // CRITICAL — concern-driven actions come FIRST so the user sees the
+  // PCOS protocol for what they're actively struggling with at the top.
+  // protocols.ts only imports the Task *type* from this file, so there is no
+  // runtime circular dependency.
+  if (ctx.concerns && ctx.concerns.length > 0) {
+    const seenTitles = new Set<string>();
+    for (const c of ctx.concerns) {
+      for (const t of tasksForConcern(c.key)) {
+        if (seenTitles.has(t.title)) continue;
+        seenTitles.add(t.title);
+        tasks.push(t);
+      }
+    }
+  }
 
   // CRITICAL — context-aware food pick (the "main mission").
   tasks.push({
