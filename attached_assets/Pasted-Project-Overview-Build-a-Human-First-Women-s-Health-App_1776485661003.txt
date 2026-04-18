@@ -1,0 +1,117 @@
+Project Overview:
+
+Build a "Human-First" Women’s Health App specifically for PCOS/PCOD management. The app moves away from rigid habit tracking and instead uses Energy-Synced Adaptive Logic and Menstrual Cycle Mapping.
+
+
+
+Core Technology & Integrations:
+
+
+
+Framework: React Native (Expo) for the frontend.
+
+
+
+Data Source: Integrate Apple HealthKit (via Mock Data for initial build) to pull: Period dates, Heart Rate Variability (HRV), Activity, and Sleep.
+
+
+
+Voice Interface: Use Web Speech API or Whisper for transcribing user voice "vents" into health logs.
+
+
+
+Key Functional Requirements:
+
+
+
+1. Zero-Friction Onboarding
+
+Implement a "Social Login" (Apple/Google).
+
+
+
+Upon login, trigger a Chatbot Interview. The bot should say: "I've synced your last 3 months of cycle data. You're currently in your [Phase Name]. How's your energy on a scale of 1-10?"
+
+
+
+2. The "Adaptive Energy" Dashboard
+
+UI States: The dashboard theme (colors/typography) must change based on 4 phases:
+
+
+
+Menstrual (Days 1-5): Dark mode, soothing blues/purples, "Low Battery" tasks (Rest, Hydration).
+
+
+
+Follicular (Days 6-13): Bright, energetic greens, "Build" tasks (Strength training, High protein).
+
+
+
+Ovulatory (Day 14): Vibrant gold, "Social" tasks (Community pings, Cardio).
+
+
+
+Luteal (Days 15-28): Warm oranges/ambers, "Maintenance" tasks (Glucose-steady meals, Stress management).
+
+
+
+Task Scaling: If Apple Watch data shows "Low HRV" (High Stress), automatically downgrade a "Workout" task to a "10-minute Stretch" task to maintain the user’s streak.
+
+
+
+3. Voice-First "Vent" Journal (The Tracker)
+
+Replace standard checkboxes with a Mic Button.
+
+
+
+Logic: When a user speaks (e.g., "I'm craving sweets and feeling bloated"), the AI must:
+
+
+
+Transcribe the text.
+
+
+
+Extract symptoms (Cravings, Bloating).
+
+
+
+Categorize the log based on her current cycle phase.
+
+
+
+Provide an immediate "PCOS Fix" (e.g., "That's the Luteal progesterone drop. Try a savory snack like almonds to stop the spike.").
+
+
+
+4. The "Secret Circle" (Social)
+
+Create a "Community Mood Map."
+
+
+
+A visual (not text) representation showing how many anonymous users in the same cycle phase are feeling today. No sensitive data sharing—just "You are not alone" vibes.
+
+
+
+UX/UI Style Guidelines:
+
+
+
+Avoid: Looking like a clinical spreadsheet or a standard "period tracker" with flowers.
+
+
+
+Adopt: A modern, "Liquid UI" feel with soft gradients and glassmorphism.
+
+
+
+Tone: Empathetic, supportive, and witty. Like a smart best friend.
+
+
+
+Success Metric for the Prototype:
+
+The user should be able to log in, have the app tell them what phase they are in, and allow them to "check off" a habit just by talking to the app for 10 seconds.
