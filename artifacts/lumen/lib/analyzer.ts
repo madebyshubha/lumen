@@ -103,7 +103,7 @@ export async function runVentAnalysis(
       travelling: input.travelling,
       travelCountry: input.travelCountry ?? null,
       energy: Math.max(1, Math.min(5, Math.round(input.energy / 2))),
-      trackedConcerns: input.trackedConcerns as unknown as ApiConcernKey[],
+      trackedConcerns: input.trackedConcerns as ApiConcernKey[],
       recentVentTexts: input.recentVentTexts.slice(0, 5),
     },
   };

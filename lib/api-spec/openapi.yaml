@@ -60,6 +60,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VentAnalysisError"
+        "504":
+          description: LLM upstream timed out; client should fall back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
 components:
   schemas:
     HealthStatus:
