@@ -10,7 +10,7 @@ import React, {
 } from "react";
 
 import type { CyclePhase, PhasePalette } from "@/constants/colors";
-import colors from "@/constants/colors";
+import colors, { HOLDING_PALETTE } from "@/constants/colors";
 import {
   computeCycleState,
   generateMockHealth,
@@ -288,18 +288,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [vibe]);
 
-  const cycle = useMemo<CycleState | null>(() => {
-    if (!profile) return null;
-    return computeCycleState(profile.lastPeriodISO, profile.cycleLength);
-  }, [profile]);
-
   const health = useMemo<MockHealth | null>(() => {
     if (!profile) return null;
     return generateMockHealth(profile.lastPeriodISO, profile.cycleLength);
   }, [profile]);
 
+  const cycle = useMemo<CycleState | null>(() => {
+    if (!profile) return null;
+    // Pass health so Phase-Fluid Logic can read BBT and decide whether to
+    // advance into luteal or stay in the holding pattern.
+    return computeCycleState(
+      profile.lastPeriodISO,
+      profile.cycleLength,
+      new Date(),
+      health,
+    );
+  }, [profile, health]);
+
   const palette = useMemo<PhasePalette>(() => {
-    return cycle ? colors.phases[cycle.phase] : colors.phases.luteal;
+    if (!cycle) return colors.phases.luteal;
+    if (cycle.effectivePhase === "holding") return HOLDING_PALETTE;
+    return colors.phases[cycle.effectivePhase];
   }, [cycle]);
 
   const todayLog = useMemo<DailyLog>(() => {
@@ -381,6 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       travelling: todayLog.context.travelling,
       travelCountry: todayLog.context.travelCountry,
       concerns: todayLog.context.concerns,
+      holding: cycle.effectivePhase === "holding",
     });
     return applyVibeToTasks(base, activeDirective);
   }, [
@@ -398,7 +408,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Mocked HealthKit "sync": last period 12 days ago — places user in the
       // luteal phase for an interesting first impression.
       const lastPeriod = new Date();
-      lastPeriod.setDate(lastPeriod.getDate() - 12);
+      // Demo seed: 18 days ago places her at calendar-luteal day 19 with no
+      // detected ovulation (mocked BBT stays flat), so the home opens in the
+      // headline Phase-Fluid Logic state — a Holding Pattern instead of a
+      // luteal countdown.
+      lastPeriod.setDate(lastPeriod.getDate() - 18);
       setProfile({
         name,
         provider,

@@ -40,7 +40,42 @@ export type TaskContext = {
   travelling: boolean;
   travelCountry?: CountryCode;
   concerns?: ActiveConcern[];
+  // Phase-Fluid Logic: when the calendar would advance into luteal but no
+  // ovulation has been detected, we stay in a "holding" pattern. The task
+  // mix swings to insulin sensitivity + stress instead of luteal cramps/PMS
+  // prep that doesn't apply to an anovulatory cycle.
+  holding?: boolean;
 };
+
+function holdingTasks(): Task[] {
+  return [
+    {
+      id: "holding-strength",
+      title: "Strength training, 25 min",
+      detail: "Heavy compound lifts beat any cardio for this.",
+      why: "Lean muscle is the #1 lever for insulin sensitivity — and insulin sensitivity is what gets ovulation back.",
+      kind: "movement",
+      priority: "important",
+    },
+    {
+      id: "holding-stress",
+      title: "10-minute nervous-system reset",
+      detail: "Slow nasal breathing, feet on the ground, no phone.",
+      why: "Chronic stress raises cortisol, which suppresses ovulation. Lowering it is direct hormonal work.",
+      kind: "mindset",
+      priority: "important",
+      habit: "meditate",
+    },
+    {
+      id: "holding-inositol",
+      title: "Myo-inositol with breakfast",
+      detail: "2g, paired with protein.",
+      why: "Inositol restores ovulation in PCOS in many studies — it's a tool for exactly this state.",
+      kind: "supplement",
+      priority: "gentle",
+    },
+  ];
+}
 
 // ---- Phase-specific tasks ------------------------------------------------
 
@@ -189,8 +224,14 @@ export function generateDailyTasks(ctx: TaskContext): Task[] {
     context: ctx.travelling ? `Travel · ${where}` : undefined,
   });
 
-  // IMPORTANT — phase-driven additions
-  tasks.push(...phaseTasks(ctx.phase));
+  // IMPORTANT — Phase-Fluid Logic: when we're in the holding pattern,
+  // swap the calendar-phase tasks for a focused insulin/stress set.
+  // Otherwise use the calendar phase's tasks.
+  if (ctx.holding) {
+    tasks.push(...holdingTasks());
+  } else {
+    tasks.push(...phaseTasks(ctx.phase));
+  }
 
   // IMPORTANT — travel-only additions
   if (ctx.travelling) {
@@ -215,8 +256,9 @@ export function generateDailyTasks(ctx: TaskContext): Task[] {
     });
   }
 
-  // GENTLE — luteal cravings safety net
-  if (ctx.phase === "luteal") {
+  // GENTLE — luteal cravings safety net (skip in holding pattern: there's
+  // no progesterone-drop crash to brace for if ovulation hasn't happened).
+  if (ctx.phase === "luteal" && !ctx.holding) {
     tasks.push({
       id: "savory-snack",
       title: "Keep almonds in your bag",

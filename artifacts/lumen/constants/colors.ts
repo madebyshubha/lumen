@@ -119,6 +119,35 @@ const phases: Record<CyclePhase, PhasePalette> = {
   },
 };
 
+// Holding pattern palette — used by Phase-Fluid Logic when the calendar
+// would advance into luteal but no temperature rise has confirmed
+// ovulation. Distinct steady teal so the dashboard *visually* communicates
+// "we're not advancing — we're holding for a signal." Calmer than the
+// follicular green, cooler than luteal orange.
+export const HOLDING_PALETTE: PhasePalette = {
+  name: "Holding pattern",
+  tagline: "Insulin and stress, while we wait.",
+  background: "#eaf6f4",
+  backgroundAlt: "#d8ece9",
+  surface: "rgba(255,255,255,0.74)",
+  surfaceMuted: "rgba(255,255,255,0.5)",
+  glass: "rgba(255,255,255,0.55)",
+  glassBorder: "rgba(28,124,118,0.20)",
+  text: "#0f2f2c",
+  textMuted: "#456c68",
+  primary: "#1c8a7c",
+  primarySoft: "rgba(28,138,124,0.16)",
+  accent: "#5fb8ad",
+  accentSoft: "rgba(95,184,173,0.22)",
+  highlight: "#2ea597",
+  ring: "#1c8a7c",
+  ringTrack: "rgba(28,138,124,0.16)",
+  gradientFrom: "#dcefec",
+  gradientTo: "#f1faf8",
+  shadow: "#1c8a7c",
+  isDark: false,
+};
+
 const colors = {
   phases,
   // Default light palette (kept for legacy useColors compatibility — Lumen uses phase palettes everywhere)

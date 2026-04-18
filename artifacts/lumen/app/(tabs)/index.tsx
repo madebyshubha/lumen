@@ -69,7 +69,13 @@ export default function DashboardScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <TopBar greeting={`${cycle.phase} day ${cycle.dayOfCycle}`} />
+        <TopBar
+          greeting={
+            cycle.effectivePhase === "holding"
+              ? `holding pattern · day ${cycle.dayOfCycle}`
+              : `${cycle.effectivePhase} day ${cycle.dayOfCycle}`
+          }
+        />
 
         <View style={{ paddingHorizontal: 20 }}>
           {/* MORNING BRIEF — proactive care card. "I checked your overnight
@@ -109,14 +115,28 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
               </View>
-              <PhaseRing
-                size={96}
-                strokeWidth={8}
-                progress={progress}
-                topLabel="Period in"
-                centerValue={String(cycle.daysToNextPeriod)}
-                bottomLabel={cycle.daysToNextPeriod === 1 ? "day" : "days"}
-              />
+              {/* Phase-Fluid Logic: don't count down to a period that
+                  isn't coming. When holding, show how many days we've
+                  been waiting for ovulation instead. */}
+              {cycle.effectivePhase === "holding" ? (
+                <PhaseRing
+                  size={96}
+                  strokeWidth={8}
+                  progress={Math.min(1, cycle.daysPastExpectedOvulation / 14)}
+                  topLabel="Holding for"
+                  centerValue={String(cycle.daysPastExpectedOvulation)}
+                  bottomLabel={cycle.daysPastExpectedOvulation === 1 ? "day" : "days"}
+                />
+              ) : (
+                <PhaseRing
+                  size={96}
+                  strokeWidth={8}
+                  progress={progress}
+                  topLabel="Period in"
+                  centerValue={String(cycle.daysToNextPeriod)}
+                  bottomLabel={cycle.daysToNextPeriod === 1 ? "day" : "days"}
+                />
+              )}
             </View>
           </GlassCard>
 
@@ -254,14 +274,29 @@ export default function DashboardScreen() {
             </GlassCard>
           ) : null}
 
-          {/* MY CYCLE — hidden on low days. */}
+          {/* MY CYCLE — hidden on low days. In holding pattern we replace
+              the "Next period" countdown with the holding-status row so the
+              user isn't told a period is on its way that the data doesn't
+              support. */}
           {layout.showCycleStats ? (
             <GlassCard>
               <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 12 }]}>
                 My cycle
               </Text>
               <StatRow label="Last period" value={shortDate(cycle.lastPeriodDate)} icon="droplet" />
-              <StatRow label="Next period" value={shortDate(cycle.nextPeriodDate)} icon="calendar" />
+              {cycle.effectivePhase === "holding" ? (
+                <StatRow
+                  label="Ovulation"
+                  value={`Not detected · ${cycle.daysPastExpectedOvulation}d past expected`}
+                  icon="clock"
+                />
+              ) : (
+                <StatRow
+                  label="Next period"
+                  value={shortDate(cycle.nextPeriodDate)}
+                  icon="calendar"
+                />
+              )}
               <StatRow label="Cycle length" value={`${cycle.cycleLength} days`} icon="repeat" />
               <StatRow
                 label="HRV today"

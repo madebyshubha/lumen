@@ -42,6 +42,7 @@ export function buildProactiveBrief(input: {
 }): ProactiveBrief | null {
   const { health, cycle, travelling } = input;
   if (!health || !cycle) return null;
+  const holding = cycle.effectivePhase === "holding";
 
   const today = new Date();
   const day = localDay(today);
@@ -94,6 +95,45 @@ export function buildProactiveBrief(input: {
         swapMovementToRest: true,
         promoteLean: false,
         paletteIntensity: "soft",
+        expiresAt,
+      },
+    };
+  }
+
+  if (holding) {
+    return {
+      id: `brief:${day}:holding`,
+      reason: "ovulation-window",
+      title: "Your temperature hasn't risen — staying in holding pattern",
+      detail: `${cycle.daysPastExpectedOvulation} day${
+        cycle.daysPastExpectedOvulation === 1 ? "" : "s"
+      } past expected ovulation, no thermal shift yet. I'm not going to count down to a period that may not be coming.`,
+      bullets: [
+        "Today's mission is insulin sensitivity, not luteal prep.",
+        "Promoted strength + a nervous-system reset.",
+        "Hidden the period countdown — it's not real until your body says so.",
+      ],
+      directive: {
+        mood: "steady",
+        intensity: 1,
+        headline: "Holding pattern. Insulin and stress are the levers right now.",
+        explanation:
+          "PCOS often means anovulatory cycles. Pretending we're luteal would have us bracing for a crash that isn't coming and missing the actual lever — insulin sensitivity is what restores ovulation.",
+        pillLabel: "Holding pattern",
+        missionTitle: "Insulin and stress",
+        missionSub: "The two levers that bring ovulation back",
+        streakNote: "Holding your streak — every small move counts here.",
+        injectedTask: {
+          title: "10-minute walk after every meal today",
+          detail: "Short walks within 30 min of eating. Three of them.",
+          why: "Post-meal walks lower glucose 17–22%. Repeat insulin spikes are exactly what's keeping ovulation suppressed.",
+          kind: "movement",
+        },
+        simplifyLevel: 1,
+        hideTaskKinds: [],
+        swapMovementToRest: false,
+        promoteLean: false,
+        paletteIntensity: "normal",
         expiresAt,
       },
     };
