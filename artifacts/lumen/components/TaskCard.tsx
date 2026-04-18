@@ -9,12 +9,11 @@ import type { Task } from "@/lib/tasks";
 const ICONS: Record<Task["kind"], keyof typeof Feather.glyphMap> = {
   rest: "moon",
   hydration: "droplet",
-  strength: "activity",
-  protein: "coffee",
+  movement: "wind",
+  food: "coffee",
   social: "send",
-  cardio: "wind",
-  glucose: "pie-chart",
-  stress: "wind",
+  mindset: "feather",
+  supplement: "package",
 };
 
 export function TaskCard({ task }: { task: Task }) {

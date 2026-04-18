@@ -18,8 +18,30 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { computeCycleState } from "@/lib/cycle";
+import {
+  COUNTRIES,
+  DIET_LABEL,
+  DIET_OPTIONS,
+  type CountryCode,
+  type Diet,
+} from "@/lib/lifestyle";
 
-type Step = "login" | "interview-name" | "interview-phase" | "interview-energy";
+type Step =
+  | "login"
+  | "interview-name"
+  | "interview-diet"
+  | "interview-country"
+  | "interview-phase"
+  | "interview-energy";
+
+const DIET_BLURB: Record<Diet, string> = {
+  vegetarian: "Plant-forward with dairy and eggs are fine.",
+  vegan: "Fully plant-based.",
+  eggetarian: "Vegetarian, plus eggs.",
+  "non-vegetarian": "Anything goes — meat, fish, the works.",
+  pescatarian: "Vegetarian plus fish and seafood.",
+  jain: "No root vegetables, onion, or garlic.",
+};
 
 export default function Onboarding() {
   const palette = colors.phases.luteal; // pre-onboarding default; once profile saved, app re-themes.
@@ -29,6 +51,8 @@ export default function Onboarding() {
   const [provider, setProvider] = useState<"apple" | "google">("apple");
   const [name, setName] = useState("");
   const [energy, setEnergy] = useState(6);
+  const [diet, setDiet] = useState<Diet>("vegetarian");
+  const [homeCountry, setHomeCountry] = useState<CountryCode>("IN");
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -55,7 +79,7 @@ export default function Onboarding() {
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    await completeOnboarding({ name: cleanedName, provider, energy });
+    await completeOnboarding({ name: cleanedName, provider, energy, diet, homeCountry });
   };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top + 12;
@@ -99,6 +123,24 @@ export default function Onboarding() {
                 palette={palette}
                 name={name}
                 setName={setName}
+                onContinue={() => setStep("interview-diet")}
+              />
+            ) : null}
+
+            {step === "interview-diet" ? (
+              <InterviewDiet
+                palette={palette}
+                diet={diet}
+                setDiet={setDiet}
+                onContinue={() => setStep("interview-country")}
+              />
+            ) : null}
+
+            {step === "interview-country" ? (
+              <InterviewCountry
+                palette={palette}
+                country={homeCountry}
+                setCountry={setHomeCountry}
                 onContinue={() => setStep("interview-phase")}
               />
             ) : null}
@@ -137,12 +179,14 @@ function Login({
 }) {
   return (
     <View>
-      <Text style={[styles.tagline, { color: palette.textMuted }]}>A human-first cycle companion</Text>
+      <Text style={[styles.tagline, { color: palette.textMuted }]}>
+        A human-first PCOS companion
+      </Text>
       <Text style={[styles.headline, { color: palette.text }]}>
         Hi.{"\n"}I move with your body, not against it.
       </Text>
       <Text style={[styles.body, { color: palette.textMuted }]}>
-        No checkboxes. No flowers. Just the truth about your cycle, and one quiet thing to do today.
+        Daily missions tuned to your cycle, your diet, and where in the world you are right now.
       </Text>
 
       <View style={{ marginTop: 32, gap: 12 }}>
@@ -243,6 +287,111 @@ function InterviewName({
       <PrimaryBtn palette={palette} onPress={onContinue} disabled={!name.trim()}>
         Continue
       </PrimaryBtn>
+    </View>
+  );
+}
+
+function InterviewDiet({
+  palette,
+  diet,
+  setDiet,
+  onContinue,
+}: {
+  palette: typeof colors.phases.luteal;
+  diet: Diet;
+  setDiet: (d: Diet) => void;
+  onContinue: () => void;
+}) {
+  return (
+    <View style={{ gap: 14 }}>
+      <ChatBubble palette={palette}>
+        What does your plate usually look like? I'll tune food advice to it.
+      </ChatBubble>
+      <View style={styles.chipGrid}>
+        {DIET_OPTIONS.map((d) => {
+          const active = diet === d;
+          return (
+            <Pressable
+              key={d}
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.selectionAsync();
+                setDiet(d);
+              }}
+              style={({ pressed }) => [
+                styles.chipLg,
+                {
+                  backgroundColor: active ? palette.primary : palette.surface,
+                  borderColor: active ? palette.primary : palette.glassBorder,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipLgText,
+                  { color: active ? (palette.isDark ? "#0f1024" : "#ffffff") : palette.text },
+                ]}
+              >
+                {DIET_LABEL[d]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text style={[styles.helper, { color: palette.textMuted }]}>{DIET_BLURB[diet]}</Text>
+      <PrimaryBtn palette={palette} onPress={onContinue}>Continue</PrimaryBtn>
+    </View>
+  );
+}
+
+function InterviewCountry({
+  palette,
+  country,
+  setCountry,
+  onContinue,
+}: {
+  palette: typeof colors.phases.luteal;
+  country: CountryCode;
+  setCountry: (c: CountryCode) => void;
+  onContinue: () => void;
+}) {
+  return (
+    <View style={{ gap: 14 }}>
+      <ChatBubble palette={palette}>
+        Where do you call home? Your local cuisine is part of every food task I give you.
+      </ChatBubble>
+      <View style={styles.chipGrid}>
+        {COUNTRIES.map((c) => {
+          const active = country === c.code;
+          return (
+            <Pressable
+              key={c.code}
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.selectionAsync();
+                setCountry(c.code);
+              }}
+              style={({ pressed }) => [
+                styles.chipLg,
+                {
+                  backgroundColor: active ? palette.primary : palette.surface,
+                  borderColor: active ? palette.primary : palette.glassBorder,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.chipLgText,
+                  { color: active ? (palette.isDark ? "#0f1024" : "#ffffff") : palette.text },
+                ]}
+              >
+                {c.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <PrimaryBtn palette={palette} onPress={onContinue}>Continue</PrimaryBtn>
     </View>
   );
 }
@@ -418,6 +567,10 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 15,
   },
+  chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chipLg: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, borderWidth: 1 },
+  chipLgText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  helper: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18, marginTop: -4 },
   primary: {
     flexDirection: "row",
     alignItems: "center",

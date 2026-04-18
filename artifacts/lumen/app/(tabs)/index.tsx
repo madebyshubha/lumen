@@ -1,33 +1,33 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useMemo } from "react";
+import React from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { CapabilityBadges } from "@/components/CapabilityBadges";
+import { ContextStrip } from "@/components/ContextStrip";
 import { CycleCalendar, NextDaysStrip } from "@/components/CycleCalendar";
 import { GlassCard } from "@/components/GlassCard";
+import { MealLogger } from "@/components/MealLogger";
+import { MissionCard } from "@/components/MissionCard";
 import { MoodFaceRow } from "@/components/MoodFaceRow";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { PhaseRing } from "@/components/PhaseRing";
 import { Stepper } from "@/components/Stepper";
-import { TaskCard } from "@/components/TaskCard";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
-import { tasksForPhase } from "@/lib/tasks";
 
 export default function DashboardScreen() {
   const palette = usePalette();
-  const { cycle, health, todayLog, addWater, addSleep } = useApp();
-
-  const tasks = useMemo(
-    () => (cycle ? tasksForPhase(cycle.phase, health?.todayHrvLow ?? false) : []),
-    [cycle, health],
-  );
+  const { cycle, health, todayLog, addWater, addSleep, tasks } = useApp();
 
   if (!cycle || !health) return null;
 
+  const mission = tasks.filter((t) => t.priority === "critical");
+  const lean = tasks.filter((t) => t.priority === "important");
+  const gentle = tasks.filter((t) => t.priority === "gentle");
+
   const progress = 1 - cycle.daysToNextPeriod / cycle.cycleLength;
   const completed = todayLog.completedTaskIds.length;
+  const total = tasks.length;
 
   return (
     <PhaseBackground>
@@ -41,30 +41,35 @@ export default function DashboardScreen() {
         <TopBar greeting={`${cycle.phase} day ${cycle.dayOfCycle}`} />
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* HERO */}
+          {/* SLIM PHASE STRIP — calendar moved further down per restructured plan */}
           <GlassCard style={{ marginBottom: 16 }}>
-            <View style={styles.heroRow}>
+            <View style={styles.phaseRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.eyebrow, { color: palette.textMuted }]}>
                   You're in your
                 </Text>
                 <Text style={[styles.phase, { color: palette.text }]}>{palette.name}</Text>
-                <Text style={[styles.tagline, { color: palette.textMuted }]}>{palette.tagline}</Text>
-                <View style={styles.heroStats}>
-                  <View>
-                    <Text style={[styles.heroStat, { color: palette.text }]}>{cycle.dayOfCycle}</Text>
-                    <Text style={[styles.heroStatLabel, { color: palette.textMuted }]}>day of cycle</Text>
-                  </View>
-                  <View style={[styles.divider, { backgroundColor: palette.glassBorder }]} />
-                  <View>
-                    <Text style={[styles.heroStat, { color: palette.text }]}>{health.todayHrv}</Text>
-                    <Text style={[styles.heroStatLabel, { color: palette.textMuted }]}>HRV today</Text>
-                  </View>
+                <Text style={[styles.tagline, { color: palette.textMuted }]}>
+                  {palette.tagline}
+                </Text>
+                <View style={styles.phaseStats}>
+                  <Text style={[styles.statSmall, { color: palette.text }]}>
+                    Day {cycle.dayOfCycle}
+                  </Text>
+                  <View style={[styles.dot, { backgroundColor: palette.glassBorder }]} />
+                  <Text style={[styles.statSmall, { color: palette.text }]}>
+                    HRV {health.todayHrv}
+                    {health.todayHrvLow ? " · low" : ""}
+                  </Text>
+                  <View style={[styles.dot, { backgroundColor: palette.glassBorder }]} />
+                  <Text style={[styles.statSmall, { color: palette.text }]}>
+                    {completed}/{total} done
+                  </Text>
                 </View>
               </View>
               <PhaseRing
-                size={140}
-                strokeWidth={10}
+                size={96}
+                strokeWidth={8}
                 progress={progress}
                 topLabel="Period in"
                 centerValue={String(cycle.daysToNextPeriod)}
@@ -73,21 +78,24 @@ export default function DashboardScreen() {
             </View>
           </GlassCard>
 
-          {/* CALENDAR */}
-          <GlassCard style={{ marginBottom: 16 }}>
-            <View style={styles.cardHead}>
-              <Text style={[styles.cardTitle, { color: palette.text }]}>This month</Text>
-              <Text style={[styles.cardSub, { color: palette.textMuted }]}>
-                {monthName(new Date())}
-              </Text>
-            </View>
-            <CycleCalendar />
-          </GlassCard>
-
-          {/* CAPABILITY BADGES */}
-          <View style={{ marginBottom: 18 }}>
-            <CapabilityBadges />
+          {/* TODAY'S MISSION — the critical PCOS-targeted tasks, front and center. */}
+          <View style={styles.sectionHead}>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>Today's mission</Text>
+            <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
+              The non-negotiables
+            </Text>
           </View>
+          <View style={{ gap: 10, marginBottom: 18 }}>
+            {mission.map((t) => (
+              <MissionCard key={t.id} task={t} />
+            ))}
+          </View>
+
+          {/* CONTEXT STRIP — where you are + travel toggle */}
+          <ContextStrip />
+
+          {/* MEAL LOGGER */}
+          <MealLogger />
 
           {/* MOOD ROW */}
           <GlassCard style={{ marginBottom: 16 }}>
@@ -97,23 +105,8 @@ export default function DashboardScreen() {
             <MoodFaceRow />
           </GlassCard>
 
-          {/* TASKS */}
-          <View style={styles.sectionHead}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>
-              Today, gently
-            </Text>
-            <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
-              {completed} of {tasks.length} done
-            </Text>
-          </View>
-          <View style={{ gap: 10, marginBottom: 18 }}>
-            {tasks.map((t) => (
-              <TaskCard key={t.id} task={t} />
-            ))}
-          </View>
-
-          {/* QUICK LOGS */}
-          <View style={[styles.row, { marginBottom: 16 }]}>
+          {/* QUICK STEPPERS */}
+          <View style={[styles.row, { marginBottom: 18 }]}>
             <Stepper
               icon="droplet"
               label="Water"
@@ -131,6 +124,53 @@ export default function DashboardScreen() {
               onPlus={() => addSleep(0.5)}
             />
           </View>
+
+          {/* LEAN-IN TASKS — phase-flavoured, important but not critical */}
+          {lean.length > 0 ? (
+            <>
+              <View style={styles.sectionHead}>
+                <Text style={[styles.sectionTitle, { color: palette.text }]}>
+                  Lean in today
+                </Text>
+                <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
+                  Phase-tuned for you
+                </Text>
+              </View>
+              <View style={{ gap: 10, marginBottom: 18 }}>
+                {lean.map((t) => (
+                  <MissionCard key={t.id} task={t} />
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          {/* GENTLE TASKS — collapsed style, smaller cards */}
+          {gentle.length > 0 ? (
+            <>
+              <View style={styles.sectionHead}>
+                <Text style={[styles.sectionTitle, { color: palette.text }]}>If you can</Text>
+                <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
+                  Bonus, not pressure
+                </Text>
+              </View>
+              <View style={{ gap: 10, marginBottom: 18 }}>
+                {gentle.map((t) => (
+                  <MissionCard key={t.id} task={t} />
+                ))}
+              </View>
+            </>
+          ) : null}
+
+          {/* CALENDAR — moved to a smaller part of the page */}
+          <GlassCard style={{ marginBottom: 16 }}>
+            <View style={styles.cardHead}>
+              <Text style={[styles.cardTitle, { color: palette.text }]}>This month</Text>
+              <Text style={[styles.cardSub, { color: palette.textMuted }]}>
+                {monthName(new Date())}
+              </Text>
+            </View>
+            <CycleCalendar />
+          </GlassCard>
 
           {/* NEXT 7 DAYS */}
           <GlassCard style={{ marginBottom: 16 }}>
@@ -226,19 +266,18 @@ function shortDate(d: Date): string {
 
 const styles = StyleSheet.create({
   content: { paddingTop: 0 },
-  heroRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  phaseRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   eyebrow: {
     fontSize: 11,
     letterSpacing: 1.4,
     textTransform: "uppercase",
     fontFamily: "Inter_500Medium",
   },
-  phase: { fontSize: 28, fontFamily: "Outfit_700Bold", marginTop: 4 },
+  phase: { fontSize: 26, fontFamily: "Outfit_700Bold", marginTop: 4 },
   tagline: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 4 },
-  heroStats: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 14 },
-  heroStat: { fontSize: 22, fontFamily: "Outfit_700Bold" },
-  heroStatLabel: { fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 1, textTransform: "uppercase" },
-  divider: { width: 1, height: 28 },
+  phaseStats: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, flexWrap: "wrap" },
+  statSmall: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  dot: { width: 3, height: 3, borderRadius: 2 },
   cardHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   cardTitle: { fontSize: 16, fontFamily: "Outfit_600SemiBold" },
   cardSub: { fontSize: 12, fontFamily: "Inter_500Medium" },

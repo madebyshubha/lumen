@@ -17,8 +17,17 @@ import {
   type CycleState,
   type MockHealth,
 } from "@/lib/cycle";
+import {
+  EMPTY_CONTEXT,
+  scoreMeal,
+  type CountryCode,
+  type DailyContext,
+  type Diet,
+  type Meal,
+  type MealSlot,
+} from "@/lib/lifestyle";
 import type { HabitTag, SymptomTag } from "@/lib/symptoms";
-import { tasksForPhase } from "@/lib/tasks";
+import { generateDailyTasks, type Task } from "@/lib/tasks";
 
 const STORAGE_KEY = "lumen.state.v1";
 
@@ -26,6 +35,8 @@ export type Profile = {
   name: string;
   provider: "apple" | "google";
   energy: number; // 1-10
+  diet: Diet;
+  homeCountry: CountryCode;
   lastPeriodISO: string;
   cycleLength: number;
   createdAt: string;
@@ -48,6 +59,7 @@ export type DailyLog = {
   mood?: number; // 0..4 face index
   completedTaskIds: string[];
   completedHabits: HabitTag[];
+  context: DailyContext;
 };
 
 type Persisted = {
@@ -64,13 +76,24 @@ type AppContextValue = {
   palette: PhasePalette;
   vents: VentEntry[];
   todayLog: DailyLog;
-  completeOnboarding: (input: { name: string; provider: "apple" | "google"; energy: number }) => Promise<void>;
+  tasks: Task[];
+  completeOnboarding: (input: {
+    name: string;
+    provider: "apple" | "google";
+    energy: number;
+    diet: Diet;
+    homeCountry: CountryCode;
+  }) => Promise<void>;
   signOut: () => Promise<void>;
   addVent: (entry: Omit<VentEntry, "id" | "createdAt">) => Promise<void>;
   setMood: (mood: number) => Promise<void>;
   toggleTask: (taskId: string) => Promise<void>;
   addWater: (delta: number) => Promise<void>;
   addSleep: (delta: number) => Promise<void>;
+  setLocation: (location: string) => Promise<void>;
+  setTravelling: (travelling: boolean, country?: CountryCode) => Promise<void>;
+  addMeal: (slot: MealSlot, text: string) => Promise<void>;
+  removeMeal: (id: string) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -89,11 +112,29 @@ function emptyLog(): DailyLog {
     sleepHours: 0,
     completedTaskIds: [],
     completedHabits: [],
+    context: { ...EMPTY_CONTEXT },
   };
 }
 
 function newId(): string {
   return Date.now().toString() + Math.random().toString(36).slice(2, 9);
+}
+
+// Migrate older logs that didn't carry context/meals.
+function hydrateLog(raw: Partial<DailyLog> & { date: string }): DailyLog {
+  const base = emptyLog();
+  return {
+    ...base,
+    ...raw,
+    completedTaskIds: raw.completedTaskIds ?? [],
+    completedHabits: raw.completedHabits ?? [],
+    context: {
+      travelling: raw.context?.travelling ?? false,
+      location: raw.context?.location,
+      travelCountry: raw.context?.travelCountry,
+      meals: raw.context?.meals ?? [],
+    },
+  };
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -102,10 +143,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [vents, setVents] = useState<VentEntry[]>([]);
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
 
-  // Bumped on signOut. Used by the persist effect below to skip any pending
-  // write whose payload was captured before the sign-out cleared state.
+  // Bumped on signOut. Used by the persist effect to skip any pending write
+  // whose payload was captured before the sign-out cleared state.
   const sessionRef = useRef(0);
   const lastWrittenSessionRef = useRef(0);
+  // Serialises AsyncStorage writes so that concurrent setItem calls (e.g.
+  // from rapid keystrokes in ContextStrip / MealLogger) cannot resolve out of
+  // order and overwrite newer state with older.
+  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Hydrate once on mount.
   useEffect(() => {
@@ -117,7 +162,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(raw) as Persisted;
           setProfile(parsed.profile ?? null);
           setVents(parsed.vents ?? []);
-          setLogs(parsed.logs ?? {});
+          const rehydrated: Record<string, DailyLog> = {};
+          for (const [k, v] of Object.entries(parsed.logs ?? {})) {
+            rehydrated[k] = hydrateLog(v as Partial<DailyLog> & { date: string });
+          }
+          setLogs(rehydrated);
         }
       } catch {
         // ignore — start fresh
@@ -130,23 +179,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Persist whenever any tracked slice changes (after hydration). This
-  // serialises writes through a single effect, so functional setState updates
-  // can mutate state without each callback racing its own AsyncStorage write.
+  // Single persist effect; functional setState callbacks above can mutate
+  // state without each one racing its own AsyncStorage write. Writes are
+  // chained onto a queue so order is preserved and the final state of a
+  // burst (typing, rapid taps) is always what lands in storage last.
   useEffect(() => {
     if (!ready) return;
     const session = sessionRef.current;
-    // If a sign-out has bumped the session since this effect was scheduled,
-    // skip the write so a stale payload can't resurrect cleared data.
     if (session < lastWrittenSessionRef.current) return;
-    const payload: Persisted = { profile, vents, logs };
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-      .then(() => {
-        lastWrittenSessionRef.current = session;
+    const payload = JSON.stringify({ profile, vents, logs } satisfies Persisted);
+    writeQueueRef.current = writeQueueRef.current
+      .then(async () => {
+        // Re-check session inside the queue: a sign-out scheduled after this
+        // write was queued must still suppress the write.
+        if (session < lastWrittenSessionRef.current) return;
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, payload);
+          lastWrittenSessionRef.current = session;
+        } catch {
+          // ignore — next change retries
+        }
       })
-      .catch(() => {
-        // ignore — next change will retry
-      });
+      // Swallow rejections so one failed link doesn't poison the chain.
+      .catch(() => {});
   }, [ready, profile, vents, logs]);
 
   const cycle = useMemo<CycleState | null>(() => {
@@ -167,8 +222,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return logs[todayKey()] ?? emptyLog();
   }, [logs]);
 
+  const tasks = useMemo<Task[]>(() => {
+    if (!cycle || !profile) return [];
+    return generateDailyTasks({
+      phase: cycle.phase,
+      hrvLow: health?.todayHrvLow ?? false,
+      diet: profile.diet,
+      homeCountry: profile.homeCountry,
+      travelling: todayLog.context.travelling,
+      travelCountry: todayLog.context.travelCountry,
+    });
+  }, [cycle, profile, health, todayLog.context.travelling, todayLog.context.travelCountry]);
+
   const completeOnboarding: AppContextValue["completeOnboarding"] = useCallback(
-    async ({ name, provider, energy }) => {
+    async ({ name, provider, energy, diet, homeCountry }) => {
       // Mocked HealthKit "sync": last period 12 days ago — places user in the
       // luteal phase for an interesting first impression.
       const lastPeriod = new Date();
@@ -177,6 +244,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         name,
         provider,
         energy,
+        diet,
+        homeCountry,
         lastPeriodISO: lastPeriod.toISOString(),
         cycleLength: 28,
         createdAt: new Date().toISOString(),
@@ -198,15 +267,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const upsertTodayLog = useCallback(
-    (mutate: (log: DailyLog) => DailyLog) => {
-      setLogs((prev) => {
-        const k = todayKey();
-        const current = prev[k] ?? emptyLog();
-        return { ...prev, [k]: mutate(current) };
-      });
+  const upsertTodayLog = useCallback((mutate: (log: DailyLog) => DailyLog) => {
+    setLogs((prev) => {
+      const k = todayKey();
+      const current = prev[k] ?? emptyLog();
+      return { ...prev, [k]: mutate(current) };
+    });
+  }, []);
+
+  // The vent-detected habit→task mapping: snapshot of the live-generated
+  // tasks for the user's current state, used to mark matching task ids done.
+  const matchHabitsToTaskIds = useCallback(
+    (habits: HabitTag[]): string[] => {
+      return tasks
+        .filter((t) => t.habit && habits.includes(t.habit))
+        .map((t) => t.id);
     },
-    [],
+    [tasks],
   );
 
   const addVent: AppContextValue["addVent"] = useCallback(
@@ -214,12 +291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const v: VentEntry = { ...entry, id: newId(), createdAt: new Date().toISOString() };
       setVents((prev) => [v, ...prev].slice(0, 100));
 
-      // Map detected habits to today's task ids so saying "I drank water"
-      // also checks off the matching task on the dashboard.
-      const phaseTasks = tasksForPhase(entry.phase, health?.todayHrvLow ?? false);
-      const newlyCompleted = phaseTasks
-        .filter((t) => t.habit && entry.habits.includes(t.habit))
-        .map((t) => t.id);
+      const newlyCompleted = matchHabitsToTaskIds(entry.habits);
 
       upsertTodayLog((log) => {
         const habits = Array.from(new Set([...log.completedHabits, ...entry.habits]));
@@ -232,7 +304,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return { ...log, completedHabits: habits, completedTaskIds, waterCups };
       });
     },
-    [upsertTodayLog, health],
+    [upsertTodayLog, matchHabitsToTaskIds],
   );
 
   const setMood: AppContextValue["setMood"] = useCallback(
@@ -275,6 +347,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [upsertTodayLog],
   );
 
+  const setLocation: AppContextValue["setLocation"] = useCallback(
+    async (location) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        context: { ...log.context, location: location.trim() || undefined },
+      }));
+    },
+    [upsertTodayLog],
+  );
+
+  const setTravelling: AppContextValue["setTravelling"] = useCallback(
+    async (travelling, country) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        context: {
+          ...log.context,
+          travelling,
+          travelCountry: travelling ? country ?? log.context.travelCountry : undefined,
+        },
+      }));
+    },
+    [upsertTodayLog],
+  );
+
+  const addMeal: AppContextValue["addMeal"] = useCallback(
+    async (slot, text) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      const meal: Meal = {
+        id: newId(),
+        slot,
+        text: trimmed,
+        loggedAt: new Date().toISOString(),
+        score: scoreMeal(trimmed),
+      };
+      upsertTodayLog((log) => ({
+        ...log,
+        context: { ...log.context, meals: [meal, ...log.context.meals].slice(0, 20) },
+      }));
+    },
+    [upsertTodayLog],
+  );
+
+  const removeMeal: AppContextValue["removeMeal"] = useCallback(
+    async (id) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        context: { ...log.context, meals: log.context.meals.filter((m) => m.id !== id) },
+      }));
+    },
+    [upsertTodayLog],
+  );
+
   const value = useMemo<AppContextValue>(
     () => ({
       ready,
@@ -284,6 +409,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       palette,
       vents,
       todayLog,
+      tasks,
       completeOnboarding,
       signOut,
       addVent,
@@ -291,8 +417,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleTask,
       addWater,
       addSleep,
+      setLocation,
+      setTravelling,
+      addMeal,
+      removeMeal,
     }),
-    [ready, profile, cycle, health, palette, vents, todayLog, completeOnboarding, signOut, addVent, setMood, toggleTask, addWater, addSleep],
+    [
+      ready, profile, cycle, health, palette, vents, todayLog, tasks,
+      completeOnboarding, signOut, addVent, setMood, toggleTask, addWater, addSleep,
+      setLocation, setTravelling, addMeal, removeMeal,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

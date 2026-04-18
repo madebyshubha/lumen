@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/GlassCard";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
+import { DIET_LABEL, countryName } from "@/lib/lifestyle";
 
 export default function ProfileScreen() {
   const palette = usePalette();
@@ -53,6 +54,19 @@ export default function ProfileScreen() {
             <Row icon="activity" label="HRV today" value={`${health.todayHrv} ms`} />
             <Row icon="zap" label="Stress signal" value={health.todayHrvLow ? "elevated" : "calm"} />
             <Row icon="repeat" label="Cycle length" value={`${cycle.cycleLength} days`} />
+          </GlassCard>
+
+          <GlassCard style={{ marginBottom: 16 }}>
+            <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 12 }]}>
+              Your context
+            </Text>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
+              Daily food and movement tasks are tuned to these. Travel days override them
+              automatically from the dashboard.
+            </Text>
+            <View style={styles.divider} />
+            <Row icon="coffee" label="Diet" value={DIET_LABEL[profile.diet]} />
+            <Row icon="map-pin" label="Home" value={countryName(profile.homeCountry)} />
           </GlassCard>
 
           <GlassCard style={{ marginBottom: 16 }}>
