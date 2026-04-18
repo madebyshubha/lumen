@@ -30,6 +30,8 @@ import {
 } from "@/lib/lifestyle";
 import type { HabitTag, SymptomTag } from "@/lib/symptoms";
 import { generateDailyTasks, type Task } from "@/lib/tasks";
+import { runVibeInterpret, type VibeResult } from "@/lib/vibe";
+import { applyVibeToTasks } from "@/lib/vibeFilter";
 
 const STORAGE_KEY = "lumen.state.v1";
 
@@ -82,6 +84,7 @@ type Persisted = {
   profile: Profile | null;
   vents: VentEntry[];
   logs: Record<string, DailyLog>;
+  vibe?: VibeResult | null;
 };
 
 type AppContextValue = {
@@ -94,6 +97,10 @@ type AppContextValue = {
   todayLog: DailyLog;
   tasks: Task[];
   streak: StreakInfo;
+  vibe: VibeResult | null;
+  vibeLoading: boolean;
+  applyVibe: (sentence: string) => Promise<void>;
+  clearVibe: () => Promise<void>;
   completeOnboarding: (input: {
     name: string;
     provider: "apple" | "google";
@@ -178,6 +185,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [vents, setVents] = useState<VentEntry[]>([]);
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
+  const [vibe, setVibe] = useState<VibeResult | null>(null);
+  const [vibeLoading, setVibeLoading] = useState(false);
 
   // Bumped on signOut. Used by the persist effect to skip any pending write
   // whose payload was captured before the sign-out cleared state.
@@ -203,6 +212,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             rehydrated[k] = hydrateLog(v as Partial<DailyLog> & { date: string });
           }
           setLogs(rehydrated);
+          // Restore the vibe directive if it hasn't expired yet — the home
+          // screen reshape persists across reloads but auto-clears after the
+          // server-issued TTL passes.
+          if (parsed.vibe && parsed.vibe.expiresAt) {
+            const expiresMs = Date.parse(parsed.vibe.expiresAt);
+            if (Number.isFinite(expiresMs) && expiresMs > Date.now()) {
+              setVibe(parsed.vibe);
+            }
+          }
         }
       } catch {
         // ignore — start fresh
@@ -223,7 +241,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return;
     const session = sessionRef.current;
     if (session < lastWrittenSessionRef.current) return;
-    const payload = JSON.stringify({ profile, vents, logs } satisfies Persisted);
+    const payload = JSON.stringify({ profile, vents, logs, vibe } satisfies Persisted);
     writeQueueRef.current = writeQueueRef.current
       .then(async () => {
         // Re-check session inside the queue: a sign-out scheduled after this
@@ -238,7 +256,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })
       // Swallow rejections so one failed link doesn't poison the chain.
       .catch(() => {});
-  }, [ready, profile, vents, logs]);
+  }, [ready, profile, vents, logs, vibe]);
+
+  // Self-clear the vibe when its TTL passes while the app is open. Cheap
+  // interval — the directive is small and the check is a single Date compare.
+  useEffect(() => {
+    if (!vibe) return;
+    const expiresMs = Date.parse(vibe.expiresAt);
+    if (!Number.isFinite(expiresMs)) return;
+    const remaining = expiresMs - Date.now();
+    if (remaining <= 0) {
+      setVibe(null);
+      return;
+    }
+    const timer = setTimeout(() => setVibe(null), remaining + 250);
+    return () => clearTimeout(timer);
+  }, [vibe]);
 
   const cycle = useMemo<CycleState | null>(() => {
     if (!profile) return null;
@@ -308,7 +341,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const tasks = useMemo<Task[]>(() => {
     if (!cycle || !profile) return [];
-    return generateDailyTasks({
+    const base = generateDailyTasks({
       phase: cycle.phase,
       hrvLow: health?.todayHrvLow ?? false,
       diet: profile.diet,
@@ -317,6 +350,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       travelCountry: todayLog.context.travelCountry,
       concerns: todayLog.context.concerns,
     });
+    return applyVibeToTasks(base, vibe);
   }, [
     cycle,
     profile,
@@ -324,6 +358,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     todayLog.context.travelling,
     todayLog.context.travelCountry,
     todayLog.context.concerns,
+    vibe,
   ]);
 
   const completeOnboarding: AppContextValue["completeOnboarding"] = useCallback(
@@ -352,6 +387,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setVents([]);
     setLogs({});
+    setVibe(null);
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -517,6 +553,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [upsertTodayLog],
   );
 
+  const applyVibe: AppContextValue["applyVibe"] = useCallback(
+    async (sentence: string) => {
+      const trimmed = sentence.trim();
+      if (!trimmed || !cycle || !profile) return;
+      // Capture the session at call time. If the user signs out while the
+      // request is in flight, signOut() bumps sessionRef and we drop the late
+      // response on the floor — no leaked vibe text written back to storage.
+      const session = sessionRef.current;
+      setVibeLoading(true);
+      try {
+        const result = await runVibeInterpret({
+          sentence: trimmed,
+          phase: cycle.phase,
+          dayOfCycle: cycle.dayOfCycle,
+          cycleLength: cycle.cycleLength,
+          diet: profile.diet,
+          homeCountry: profile.homeCountry,
+          travelling: todayLog.context.travelling,
+          travelCountry: todayLog.context.travelCountry ?? null,
+          energy: profile.energy,
+          trackedConcerns: todayLog.context.concerns.map((c) => c.key),
+        });
+        if (sessionRef.current !== session) return;
+        setVibe(result);
+      } finally {
+        if (sessionRef.current === session) setVibeLoading(false);
+      }
+    },
+    [
+      cycle,
+      profile,
+      todayLog.context.travelling,
+      todayLog.context.travelCountry,
+      todayLog.context.concerns,
+    ],
+  );
+
+  const clearVibe: AppContextValue["clearVibe"] = useCallback(async () => {
+    setVibe(null);
+  }, []);
+
   const removeConcern: AppContextValue["removeConcern"] = useCallback(
     async (key) => {
       upsertTodayLog((log) => ({
@@ -538,6 +615,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       todayLog,
       tasks,
       streak,
+      vibe,
+      vibeLoading,
+      applyVibe,
+      clearVibe,
       completeOnboarding,
       signOut,
       addVent,
@@ -555,6 +636,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
+      vibe, vibeLoading, applyVibe, clearVibe,
       completeOnboarding, signOut, addVent, updateVent, setMood, toggleTask, addWater, addSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
     ],

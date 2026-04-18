@@ -5,6 +5,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 
 import { ContextStrip } from "@/components/ContextStrip";
 import { CycleCalendar, NextDaysStrip } from "@/components/CycleCalendar";
+import { FeelingBar } from "@/components/FeelingBar";
 import { GlassCard } from "@/components/GlassCard";
 import { MealLogger } from "@/components/MealLogger";
 import { MissionCard } from "@/components/MissionCard";
@@ -16,10 +17,11 @@ import { StreakChip } from "@/components/StreakChip";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
 import { concernLabel } from "@/lib/protocols";
+import { layoutForMood, DEFAULT_LAYOUT } from "@/lib/vibeFilter";
 
 export default function DashboardScreen() {
   const palette = usePalette();
-  const { cycle, health, todayLog, addWater, addSleep, tasks, removeConcern } = useApp();
+  const { cycle, health, todayLog, addWater, addSleep, tasks, removeConcern, vibe } = useApp();
 
   if (!cycle || !health) return null;
 
@@ -27,12 +29,42 @@ export default function DashboardScreen() {
   const lean = tasks.filter((t) => t.priority === "important");
   const gentle = tasks.filter((t) => t.priority === "gentle");
 
+  // The whole home screen reshapes around the active vibe directive.
+  const layout = vibe
+    ? layoutForMood(
+        vibe.mood,
+        Math.max(1, Math.min(3, Math.round(vibe.intensity))) as 1 | 2 | 3,
+      )
+    : DEFAULT_LAYOUT;
+  const missionTitle = vibe?.missionTitle ?? "Today's mission";
+  const missionSub = vibe?.missionSub ?? "The non-negotiables";
+  const showLean = layout.showLean && lean.length > 0;
+  const showGentle = layout.showGentle && gentle.length > 0;
+  const leanBlock =
+    showLean ? (
+      <>
+        <View style={styles.sectionHead}>
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>
+            Lean in today
+          </Text>
+          <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
+            Phase-tuned for you
+          </Text>
+        </View>
+        <View style={{ gap: 10, marginBottom: 18 }}>
+          {lean.map((t) => (
+            <MissionCard key={t.id} task={t} />
+          ))}
+        </View>
+      </>
+    ) : null;
+
   const progress = 1 - cycle.daysToNextPeriod / cycle.cycleLength;
   const completed = todayLog.completedTaskIds.length;
   const total = tasks.length;
 
   return (
-    <PhaseBackground>
+    <PhaseBackground intensity={layout.paletteIntensity}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -43,6 +75,9 @@ export default function DashboardScreen() {
         <TopBar greeting={`${cycle.phase} day ${cycle.dayOfCycle}`} />
 
         <View style={{ paddingHorizontal: 20 }}>
+          {/* FEELING BAR — one sentence reshapes the entire home screen. */}
+          <FeelingBar />
+
           {/* SLIM PHASE STRIP — calendar moved further down per restructured plan */}
           <GlassCard style={{ marginBottom: 16 }}>
             <View style={styles.phaseRow}>
@@ -81,7 +116,7 @@ export default function DashboardScreen() {
           </GlassCard>
 
           {/* STREAK CHIP — daily-log motivator with 14-day mini history. */}
-          <StreakChip />
+          <StreakChip note={vibe?.streakNote ?? null} />
 
           {/* CARE CTA — gives the user a path when they have a chronic problem. */}
           <Pressable
@@ -139,11 +174,16 @@ export default function DashboardScreen() {
             </GlassCard>
           </Pressable>
 
-          {/* TODAY'S MISSION — the critical PCOS-targeted tasks, front and center. */}
+          {/* On a vibrant day promote Lean-in above the mission so the user
+              uses her energy on the phase-flavoured tasks first. */}
+          {layout.promoteLean ? leanBlock : null}
+
+          {/* TODAY'S MISSION — the critical PCOS-targeted tasks, front and center.
+              Title and sub-copy come from the vibe directive when one is active. */}
           <View style={styles.sectionHead}>
-            <Text style={[styles.sectionTitle, { color: palette.text }]}>Today's mission</Text>
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>{missionTitle}</Text>
             <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
-              The non-negotiables
+              {missionSub}
             </Text>
           </View>
           <View style={{ gap: 10, marginBottom: 18 }}>
@@ -186,27 +226,12 @@ export default function DashboardScreen() {
             />
           </View>
 
-          {/* LEAN-IN TASKS — phase-flavoured, important but not critical */}
-          {lean.length > 0 ? (
-            <>
-              <View style={styles.sectionHead}>
-                <Text style={[styles.sectionTitle, { color: palette.text }]}>
-                  Lean in today
-                </Text>
-                <Text style={[styles.sectionSub, { color: palette.textMuted }]}>
-                  Phase-tuned for you
-                </Text>
-              </View>
-              <View style={{ gap: 10, marginBottom: 18 }}>
-                {lean.map((t) => (
-                  <MissionCard key={t.id} task={t} />
-                ))}
-              </View>
-            </>
-          ) : null}
+          {/* LEAN-IN TASKS — phase-flavoured, important but not critical.
+              Hidden on low/anxious days; promoted above mission on vibrant days. */}
+          {!layout.promoteLean ? leanBlock : null}
 
-          {/* GENTLE TASKS — collapsed style, smaller cards */}
-          {gentle.length > 0 ? (
+          {/* GENTLE TASKS — collapsed style, smaller cards. Hidden on low/anxious. */}
+          {showGentle ? (
             <>
               <View style={styles.sectionHead}>
                 <Text style={[styles.sectionTitle, { color: palette.text }]}>If you can</Text>
@@ -222,39 +247,45 @@ export default function DashboardScreen() {
             </>
           ) : null}
 
-          {/* CALENDAR — moved to a smaller part of the page */}
-          <GlassCard style={{ marginBottom: 16 }}>
-            <View style={styles.cardHead}>
-              <Text style={[styles.cardTitle, { color: palette.text }]}>This month</Text>
-              <Text style={[styles.cardSub, { color: palette.textMuted }]}>
-                {monthName(new Date())}
+          {/* CALENDAR — moved to a smaller part of the page. Hidden on low days. */}
+          {layout.showCalendar ? (
+            <GlassCard style={{ marginBottom: 16 }}>
+              <View style={styles.cardHead}>
+                <Text style={[styles.cardTitle, { color: palette.text }]}>This month</Text>
+                <Text style={[styles.cardSub, { color: palette.textMuted }]}>
+                  {monthName(new Date())}
+                </Text>
+              </View>
+              <CycleCalendar />
+            </GlassCard>
+          ) : null}
+
+          {/* NEXT 7 DAYS — hidden on low/anxious days to keep the screen quiet. */}
+          {layout.showNext7 ? (
+            <GlassCard style={{ marginBottom: 16 }}>
+              <View style={styles.cardHead}>
+                <Text style={[styles.cardTitle, { color: palette.text }]}>Next seven days</Text>
+              </View>
+              <NextDaysStrip />
+            </GlassCard>
+          ) : null}
+
+          {/* MY CYCLE — hidden on low days. */}
+          {layout.showCycleStats ? (
+            <GlassCard>
+              <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 12 }]}>
+                My cycle
               </Text>
-            </View>
-            <CycleCalendar />
-          </GlassCard>
-
-          {/* NEXT 7 DAYS */}
-          <GlassCard style={{ marginBottom: 16 }}>
-            <View style={styles.cardHead}>
-              <Text style={[styles.cardTitle, { color: palette.text }]}>Next seven days</Text>
-            </View>
-            <NextDaysStrip />
-          </GlassCard>
-
-          {/* MY CYCLE */}
-          <GlassCard>
-            <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 12 }]}>
-              My cycle
-            </Text>
-            <StatRow label="Last period" value={shortDate(cycle.lastPeriodDate)} icon="droplet" />
-            <StatRow label="Next period" value={shortDate(cycle.nextPeriodDate)} icon="calendar" />
-            <StatRow label="Cycle length" value={`${cycle.cycleLength} days`} icon="repeat" />
-            <StatRow
-              label="HRV today"
-              value={`${health.todayHrv} ms${health.todayHrvLow ? " · low" : ""}`}
-              icon="heart"
-            />
-          </GlassCard>
+              <StatRow label="Last period" value={shortDate(cycle.lastPeriodDate)} icon="droplet" />
+              <StatRow label="Next period" value={shortDate(cycle.nextPeriodDate)} icon="calendar" />
+              <StatRow label="Cycle length" value={`${cycle.cycleLength} days`} icon="repeat" />
+              <StatRow
+                label="HRV today"
+                value={`${health.todayHrv} ms${health.todayHrvLow ? " · low" : ""}`}
+                icon="heart"
+              />
+            </GlassCard>
+          ) : null}
 
           <Pressable
             onPress={() => router.push("/(tabs)/vent")}

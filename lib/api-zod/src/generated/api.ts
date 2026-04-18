@@ -103,3 +103,98 @@ export const AnalyzeVentResponse = zod.object({
     })
     .nullish(),
 });
+
+/**
+ * Takes one short sentence about how the user is feeling right now plus
+her PCOS context and returns a structured "vibe directive" the home
+screen can use to reshape itself: mood category, intensity, layout
+copy, an optional micro-task to prepend, and an expiry timestamp.
+
+ * @summary Interpret a one-sentence mood and return a home-screen directive
+ */
+export const interpretVibeBodySentenceMax = 280;
+
+export const interpretVibeBodyContextCycleLengthMin = 14;
+
+export const interpretVibeBodyContextEnergyMax = 5;
+
+export const interpretVibeBodyContextRecentVentTextsMax = 5;
+
+export const InterpretVibeBody = zod.object({
+  sentence: zod.string().min(1).max(interpretVibeBodySentenceMax),
+  context: zod.object({
+    phase: zod.enum(["menstrual", "follicular", "ovulatory", "luteal"]),
+    dayOfCycle: zod.number().min(1),
+    cycleLength: zod.number().min(interpretVibeBodyContextCycleLengthMin),
+    diet: zod.string(),
+    homeCountry: zod.string(),
+    travelling: zod.boolean(),
+    travelCountry: zod.string().nullish(),
+    energy: zod.number().min(1).max(interpretVibeBodyContextEnergyMax),
+    trackedConcerns: zod.array(
+      zod.enum([
+        "acne",
+        "hair-loss",
+        "hirsutism",
+        "irregular-cycle",
+        "weight-belly",
+        "fatigue",
+        "cravings",
+        "insomnia",
+        "anxiety",
+        "dark-patches",
+      ]),
+    ),
+    recentVentTexts: zod
+      .array(zod.string())
+      .max(interpretVibeBodyContextRecentVentTextsMax),
+  }),
+});
+
+export const interpretVibeResponseIntensityMax = 3;
+
+export const InterpretVibeResponse = zod.object({
+  mood: zod.enum(["low", "anxious", "vibrant", "steady"]),
+  intensity: zod
+    .number()
+    .min(1)
+    .max(interpretVibeResponseIntensityMax)
+    .describe("How strongly to apply (1 mild, 3 strong)."),
+  headline: zod
+    .string()
+    .describe("Short warm sentence shown above the home (max ~18 words)."),
+  pillLabel: zod
+    .string()
+    .describe('Tiny label for the \"Tuned for …\" pill (max ~6 words).'),
+  missionTitle: zod
+    .string()
+    .describe("Section header for the mission section."),
+  missionSub: zod
+    .string()
+    .describe("Section sub-copy for the mission section."),
+  streakNote: zod
+    .string()
+    .nullable()
+    .describe("Optional sub-line for the streak chip (e.g. for low mood)."),
+  injectedTask: zod
+    .object({
+      title: zod.string(),
+      detail: zod.string(),
+      why: zod.string(),
+      kind: zod.enum([
+        "rest",
+        "hydration",
+        "movement",
+        "food",
+        "social",
+        "mindset",
+        "supplement",
+      ]),
+    })
+    .nullable(),
+  expiresAt: zod.coerce
+    .date()
+    .describe(
+      "When the directive should auto-clear and the home returns to baseline.",
+    ),
+});

@@ -104,6 +104,66 @@ export interface VentAnalysis {
   followUp?: VentAnalysisFollowUp;
 }
 
+export type VibeMood = (typeof VibeMood)[keyof typeof VibeMood];
+
+export const VibeMood = {
+  low: "low",
+  anxious: "anxious",
+  vibrant: "vibrant",
+  steady: "steady",
+} as const;
+
+export type VibeTaskKind = (typeof VibeTaskKind)[keyof typeof VibeTaskKind];
+
+export const VibeTaskKind = {
+  rest: "rest",
+  hydration: "hydration",
+  movement: "movement",
+  food: "food",
+  social: "social",
+  mindset: "mindset",
+  supplement: "supplement",
+} as const;
+
+export interface InterpretVibeRequest {
+  /**
+   * @minLength 1
+   * @maxLength 280
+   */
+  sentence: string;
+  context: AnalyzeVentContext;
+}
+
+export interface VibeInjectedTask {
+  title: string;
+  detail: string;
+  why: string;
+  kind: VibeTaskKind;
+}
+
+export interface VibeDirective {
+  mood: VibeMood;
+  /**
+   * How strongly to apply (1 mild, 3 strong).
+   * @minimum 1
+   * @maximum 3
+   */
+  intensity: number;
+  /** Short warm sentence shown above the home (max ~18 words). */
+  headline: string;
+  /** Tiny label for the "Tuned for …" pill (max ~6 words). */
+  pillLabel: string;
+  /** Section header for the mission section. */
+  missionTitle: string;
+  /** Section sub-copy for the mission section. */
+  missionSub: string;
+  /** Optional sub-line for the streak chip (e.g. for low mood). */
+  streakNote: string | null;
+  injectedTask: VibeInjectedTask | null;
+  /** When the directive should auto-clear and the home returns to baseline. */
+  expiresAt: string;
+}
+
 export type VentAnalysisErrorCode =
   (typeof VentAnalysisErrorCode)[keyof typeof VentAnalysisErrorCode];
 

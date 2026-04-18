@@ -19,8 +19,10 @@ import type {
 import type {
   AnalyzeVentRequest,
   HealthStatus,
+  InterpretVibeRequest,
   VentAnalysis,
   VentAnalysisError,
+  VibeDirective,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -196,4 +198,95 @@ export const useAnalyzeVent = <
   TContext
 > => {
   return useMutation(getAnalyzeVentMutationOptions(options));
+};
+
+/**
+ * Takes one short sentence about how the user is feeling right now plus
+her PCOS context and returns a structured "vibe directive" the home
+screen can use to reshape itself: mood category, intensity, layout
+copy, an optional micro-task to prepend, and an expiry timestamp.
+
+ * @summary Interpret a one-sentence mood and return a home-screen directive
+ */
+export const getInterpretVibeUrl = () => {
+  return `/api/vibe/interpret`;
+};
+
+export const interpretVibe = async (
+  interpretVibeRequest: InterpretVibeRequest,
+  options?: RequestInit,
+): Promise<VibeDirective> => {
+  return customFetch<VibeDirective>(getInterpretVibeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(interpretVibeRequest),
+  });
+};
+
+export const getInterpretVibeMutationOptions = <
+  TError = ErrorType<VentAnalysisError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof interpretVibe>>,
+    TError,
+    { data: BodyType<InterpretVibeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof interpretVibe>>,
+  TError,
+  { data: BodyType<InterpretVibeRequest> },
+  TContext
+> => {
+  const mutationKey = ["interpretVibe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof interpretVibe>>,
+    { data: BodyType<InterpretVibeRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return interpretVibe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InterpretVibeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof interpretVibe>>
+>;
+export type InterpretVibeMutationBody = BodyType<InterpretVibeRequest>;
+export type InterpretVibeMutationError = ErrorType<VentAnalysisError>;
+
+/**
+ * @summary Interpret a one-sentence mood and return a home-screen directive
+ */
+export const useInterpretVibe = <
+  TError = ErrorType<VentAnalysisError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof interpretVibe>>,
+    TError,
+    { data: BodyType<InterpretVibeRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof interpretVibe>>,
+  TError,
+  { data: BodyType<InterpretVibeRequest> },
+  TContext
+> => {
+  return useMutation(getInterpretVibeMutationOptions(options));
 };

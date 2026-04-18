@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GlassCard } from "@/components/GlassCard";
 import { useApp, usePalette } from "@/context/AppContext";
 
-export function StreakChip() {
+export function StreakChip({ note }: { note?: string | null } = {}) {
   const palette = usePalette();
   const { streak } = useApp();
   const [open, setOpen] = useState(false);
@@ -53,8 +53,25 @@ export function StreakChip() {
         />
       </Pressable>
 
-      {/* Nudge: shown on every day that hasn't been logged yet, regardless of current streak. */}
-      {!streak.loggedToday ? (
+      {/* Vibe-driven streak protection note (e.g. "We're holding your streak today" on a low day). */}
+      {note ? (
+        <View
+          style={[
+            styles.nudge,
+            { backgroundColor: palette.primarySoft, borderColor: palette.glassBorder },
+          ]}
+        >
+          <Feather name="shield" size={12} color={palette.primary} />
+          <Text style={[styles.nudgeText, { color: palette.text }]} numberOfLines={2}>
+            {note}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Nudge: shown on every day that hasn't been logged yet, regardless of current streak.
+          Suppressed when a vibe-driven streak protection note is showing — that note IS the
+          streak message for today and a second contradicting line would weaken trust. */}
+      {!streak.loggedToday && !note ? (
         <View
           style={[
             styles.nudge,

@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: vents
     description: Vent journal LLM analysis
+  - name: vibe
+    description: One-sentence "how do I feel" → home-screen directive
 paths:
   /healthz:
     get:
@@ -48,6 +50,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VentAnalysis"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
+        "503":
+          description: LLM upstream unavailable; client should fall back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
+        "504":
+          description: LLM upstream timed out; client should fall back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
+  /vibe/interpret:
+    post:
+      operationId: interpretVibe
+      tags: [vibe]
+      summary: Interpret a one-sentence mood and return a home-screen directive
+      description: |
+        Takes one short sentence about how the user is feeling right now plus
+        her PCOS context and returns a structured "vibe directive" the home
+        screen can use to reshape itself: mood category, intensity, layout
+        copy, an optional micro-task to prepend, and an expiry timestamp.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InterpretVibeRequest"
+      responses:
+        "200":
+          description: Vibe directive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VibeDirective"
         "400":
           description: Invalid input
           content:
@@ -202,6 +245,84 @@ components:
         - habits
         - headline
         - explanation
+    VibeMood:
+      type: string
+      enum: [low, anxious, vibrant, steady]
+    VibeTaskKind:
+      type: string
+      enum: [rest, hydration, movement, food, social, mindset, supplement]
+    InterpretVibeRequest:
+      type: object
+      properties:
+        sentence:
+          type: string
+          minLength: 1
+          maxLength: 280
+        context:
+          $ref: "#/components/schemas/AnalyzeVentContext"
+      required:
+        - sentence
+        - context
+    VibeInjectedTask:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        why:
+          type: string
+        kind:
+          $ref: "#/components/schemas/VibeTaskKind"
+      required:
+        - title
+        - detail
+        - why
+        - kind
+    VibeDirective:
+      type: object
+      properties:
+        mood:
+          $ref: "#/components/schemas/VibeMood"
+        intensity:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: How strongly to apply (1 mild, 3 strong).
+        headline:
+          type: string
+          description: Short warm sentence shown above the home (max ~18 words).
+        pillLabel:
+          type: string
+          description: Tiny label for the "Tuned for …" pill (max ~6 words).
+        missionTitle:
+          type: string
+          description: Section header for the mission section.
+        missionSub:
+          type: string
+          description: Section sub-copy for the mission section.
+        streakNote:
+          type: string
+          nullable: true
+          description: Optional sub-line for the streak chip (e.g. for low mood).
+        injectedTask:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/VibeInjectedTask"
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the directive should auto-clear and the home returns to baseline.
+      required:
+        - mood
+        - intensity
+        - headline
+        - pillLabel
+        - missionTitle
+        - missionSub
+        - streakNote
+        - injectedTask
+        - expiresAt
     VentAnalysisError:
       type: object
       properties:
