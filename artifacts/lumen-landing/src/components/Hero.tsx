@@ -26,15 +26,17 @@ export function Hero() {
             The calm, perceptive PCOS companion.
           </h1>
           <p className="text-lg md:text-xl text-[#8c5a3a] mb-10 max-w-2xl mx-auto leading-relaxed">
-            Lumen treats you like a person who happens to have a condition, not a patient with a chart. It listens, adapts to your phase, and never shames.
+            Lumen is the PCOS app every woman wished she had at 22. It listens
+            in one tap, reshapes itself around your phase, energy, and mood,
+            and never shames you. A patient companion — not a patient chart.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a 
+            <a
               href="#try-it"
               className="w-full sm:w-auto px-8 py-4 bg-[#d97639] text-white rounded-full font-medium hover:bg-[#d97639]/90 transition-colors shadow-sm"
             >
-              Get Lumen
+              Try it on your phone
             </a>
             <a 
               href="/lumen-trailer/"

@@ -1,49 +1,72 @@
 import { motion } from "framer-motion";
-import { Mic, CheckCircle, Sunrise, Users, Activity, Sparkles } from "lucide-react";
+import {
+  Mic,
+  CheckCircle,
+  Sunrise,
+  Users,
+  Activity,
+  Sparkles,
+  LineChart,
+  Compass,
+} from "lucide-react";
 
 const features = [
   {
+    title: "Phase-Fluid dashboard",
+    desc: "The whole home reshapes around your cycle phase, energy, and mood — including a quiet Holding Pattern when ovulation hasn't been confirmed yet.",
+    icon: Compass,
+    color: "#1c8a7c",
+    bg: "#eaf6f4",
+  },
+  {
     title: "Morning Brief",
-    desc: "A gentle daily read on your body — sleep, energy, phase, and today's gentle plan.",
+    desc: "A device-agnostic daily read on your body — sleep, energy, phase, and today's gentle plan.",
     icon: Sunrise,
     color: "#d97639",
-    bg: "#fff3e9"
+    bg: "#fff3e9",
   },
   {
-    title: "One-tap Mood",
-    desc: "Never a 12-field form. Just one tap to log your mood and move on.",
+    title: "One-tap mood + quick logs",
+    desc: "Never a twelve-field form. Just one tap to log your mood, your symptoms, your day.",
     icon: CheckCircle,
     color: "#1e9d6b",
-    bg: "#f3fbf5"
+    bg: "#f3fbf5",
   },
   {
-    title: "Adaptive Missions",
-    desc: "Three-tier daily tasks scaled by your energy and phase. Travel and diet aware.",
+    title: "Adaptive missions",
+    desc: "Three-tier daily tasks — Mission, Lean In, Gentle — scaled by your HRV and phase. Travel-aware, diet-aware.",
     icon: Activity,
     color: "#d49b1a",
-    bg: "#fff8e7"
+    bg: "#fff8e7",
   },
   {
-    title: "Vent Voice Journal",
-    desc: "A voice journal that listens and reflects back phase-aware insight.",
+    title: "Vent voice journal",
+    desc: "A voice journal that listens and reflects back phase-aware insight, never judgment.",
     icon: Mic,
     color: "#1c8a7c",
-    bg: "#eaf6f4"
+    bg: "#eaf6f4",
   },
   {
-    title: "Care Plans",
-    desc: "Targeted protocols for acne, fatigue, or travel — quiet routines, not bootcamps.",
+    title: "Care plans",
+    desc: "Targeted protocols for acne, hair loss, fatigue, or travel — quiet routines, not bootcamps.",
     icon: Sparkles,
     color: "#9aa6ff",
-    bg: "#0f1024"
+    bg: "#0f1024",
   },
   {
     title: "Secret Circle",
-    desc: "An anonymous community with a phase-mates mood map and no comparison shame.",
+    desc: "An anonymous community with a phase-mates mood map and a kind, anonymous leaderboard. No comparison shame.",
     icon: Users,
     color: "#d97639",
-    bg: "#fff3e9"
-  }
+    bg: "#fff3e9",
+  },
+  {
+    title: "Cycle & health intelligence",
+    desc: "Long-term pattern recognition that makes you feel seen, not surveilled. Your body, finally explained gently.",
+    icon: LineChart,
+    color: "#7b8cff",
+    bg: "#f4f2ff",
+  },
 ];
 
 export function Features() {
