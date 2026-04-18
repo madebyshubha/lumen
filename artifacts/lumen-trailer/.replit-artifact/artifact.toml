@@ -1,0 +1,25 @@
+kind = "video"
+previewPath = "/lumen-trailer/"
+title = "Lumen Trailer"
+version = "1.0.0"
+id = "artifacts/lumen-trailer"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/lumen-trailer/" ]
+localPort = 23029
+
+[services.development]
+run = "pnpm --filter @workspace/lumen-trailer run dev"
+
+[services.production]
+run = "pnpm --filter @workspace/lumen-trailer run serve"
+
+[services.env]
+PORT = "23029"
+BROWSER = "none"
