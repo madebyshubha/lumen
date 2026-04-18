@@ -5,11 +5,10 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 
 import { ContextStrip } from "@/components/ContextStrip";
 import { CycleCalendar, NextDaysStrip } from "@/components/CycleCalendar";
-import { FeelingBar } from "@/components/FeelingBar";
+import { FeelingHeader } from "@/components/FeelingHeader";
 import { GlassCard } from "@/components/GlassCard";
 import { MealLogger } from "@/components/MealLogger";
 import { MissionCard } from "@/components/MissionCard";
-import { MoodFaceRow } from "@/components/MoodFaceRow";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { PhaseRing } from "@/components/PhaseRing";
 import { SleepQuickLog, WaterQuickLog } from "@/components/QuickLog";
@@ -72,8 +71,9 @@ export default function DashboardScreen() {
         <TopBar greeting={`${cycle.phase} day ${cycle.dayOfCycle}`} />
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* FEELING BAR — one sentence reshapes the entire home screen. */}
-          <FeelingBar />
+          {/* FEELING HEADER — tap a face to log your mood AND reshape the
+              entire home in one motion. No typing. */}
+          <FeelingHeader />
 
           {/* SLIM PHASE STRIP — calendar moved further down per restructured plan */}
           <GlassCard style={{ marginBottom: 16 }}>
@@ -194,14 +194,6 @@ export default function DashboardScreen() {
 
           {/* MEAL LOGGER */}
           <MealLogger />
-
-          {/* MOOD ROW */}
-          <GlassCard style={{ marginBottom: 16 }}>
-            <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 12 }]}>
-              How do you feel today?
-            </Text>
-            <MoodFaceRow />
-          </GlassCard>
 
           {/* QUICK LOG — single-tap water (drops) and sleep (chips). No
               typing, no +/- maths — tap once to log. */}
