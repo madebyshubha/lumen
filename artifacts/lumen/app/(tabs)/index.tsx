@@ -9,6 +9,7 @@ import { FeelingHeader } from "@/components/FeelingHeader";
 import { GlassCard } from "@/components/GlassCard";
 import { MealLogger } from "@/components/MealLogger";
 import { MissionCard } from "@/components/MissionCard";
+import { MorningBrief } from "@/components/MorningBrief";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { PhaseRing } from "@/components/PhaseRing";
 import { SleepQuickLog, WaterQuickLog } from "@/components/QuickLog";
@@ -20,7 +21,7 @@ import { layoutForDirective, DEFAULT_LAYOUT } from "@/lib/vibeFilter";
 
 export default function DashboardScreen() {
   const palette = usePalette();
-  const { cycle, health, todayLog, tasks, removeConcern, vibe } = useApp();
+  const { cycle, health, todayLog, tasks, removeConcern, vibe, activeDirective } = useApp();
 
   if (!cycle || !health) return null;
 
@@ -28,12 +29,12 @@ export default function DashboardScreen() {
   const lean = tasks.filter((t) => t.priority === "important");
   const gentle = tasks.filter((t) => t.priority === "gentle");
 
-  // The whole home screen reshapes around the active vibe directive — every
-  // layout decision (which sections, palette intensity, whether to promote
-  // Lean-in) comes straight from the server-issued directive.
-  const layout = vibe ? layoutForDirective(vibe) : DEFAULT_LAYOUT;
-  const missionTitle = vibe?.missionTitle ?? "Today's mission";
-  const missionSub = vibe?.missionSub ?? "The non-negotiables";
+  // The whole home reshapes around the active directive — which is the user's
+  // own vibe sentence if she gave one, otherwise the proactive morning brief
+  // the app generated from her overnight watch data.
+  const layout = activeDirective ? layoutForDirective(activeDirective) : DEFAULT_LAYOUT;
+  const missionTitle = activeDirective?.missionTitle ?? "Today's mission";
+  const missionSub = activeDirective?.missionSub ?? "The non-negotiables";
   const showLean = layout.showLean && lean.length > 0;
   const showGentle = layout.showGentle && gentle.length > 0;
   const leanBlock =
@@ -71,6 +72,12 @@ export default function DashboardScreen() {
         <TopBar greeting={`${cycle.phase} day ${cycle.dayOfCycle}`} />
 
         <View style={{ paddingHorizontal: 20 }}>
+          {/* MORNING BRIEF — proactive care card. "I checked your watch,
+              you had a restless night, I moved your workout and made
+              hydration today's goal." This is the headline moment of the
+              app: it greets you having already done work for you. */}
+          <MorningBrief />
+
           {/* FEELING HEADER — tap a face to log your mood AND reshape the
               entire home in one motion. No typing. */}
           <FeelingHeader />
@@ -113,7 +120,7 @@ export default function DashboardScreen() {
           </GlassCard>
 
           {/* STREAK CHIP — daily-log motivator with 14-day mini history. */}
-          <StreakChip note={vibe?.streakNote ?? null} />
+          <StreakChip note={activeDirective?.streakNote ?? null} />
 
           {/* CARE CTA — gives the user a path when they have a chronic problem. */}
           <Pressable

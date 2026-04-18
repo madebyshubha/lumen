@@ -32,6 +32,11 @@ import type { HabitTag, SymptomTag } from "@/lib/symptoms";
 import { generateDailyTasks, type Task } from "@/lib/tasks";
 import { offlineDirectiveForSentence, runVibeInterpret, type VibeResult } from "@/lib/vibe";
 import { applyVibeToTasks } from "@/lib/vibeFilter";
+import {
+  buildProactiveBrief,
+  effectiveDirective,
+  type ProactiveBrief,
+} from "@/lib/proactive";
 
 const STORAGE_KEY = "lumen.state.v1";
 
@@ -78,6 +83,9 @@ export type DailyLog = {
   completedTaskIds: string[];
   completedHabits: HabitTag[];
   context: DailyContext;
+  // Proactive brief the user has dismissed for the day. Stored so the same
+  // brief doesn't keep coming back if she taps "got it".
+  dismissedBriefId?: string | null;
 };
 
 type Persisted = {
@@ -101,6 +109,11 @@ type AppContextValue = {
   vibeLoading: boolean;
   applyVibe: (sentence: string) => Promise<void>;
   clearVibe: () => Promise<void>;
+  morningBrief: ProactiveBrief | null;
+  dismissMorningBrief: () => Promise<void>;
+  // Directive that the home actually renders against — user vibe wins,
+  // otherwise the (non-dismissed) morning brief reshapes the layout/tasks.
+  activeDirective: import("@workspace/api-client-react").VibeDirective | null;
   completeOnboarding: (input: {
     name: string;
     provider: "apple" | "google";
@@ -341,6 +354,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [streak.current, profile]);
 
+  // Proactive morning brief — derived from wearable + cycle data. Cached
+  // for the day so repeated re-renders don't churn it.
+  const morningBrief = useMemo<ProactiveBrief | null>(() => {
+    return buildProactiveBrief({
+      health,
+      cycle,
+      travelling: todayLog.context.travelling,
+    });
+  }, [health, cycle, todayLog.context.travelling]);
+
+  // The directive the home actually renders against. User-driven vibe wins;
+  // otherwise the (non-dismissed) morning brief drives layout + tasks.
+  const activeDirective = useMemo(
+    () => effectiveDirective(vibe, morningBrief, todayLog.dismissedBriefId),
+    [vibe, morningBrief, todayLog.dismissedBriefId],
+  );
+
   const tasks = useMemo<Task[]>(() => {
     if (!cycle || !profile) return [];
     const base = generateDailyTasks({
@@ -352,7 +382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       travelCountry: todayLog.context.travelCountry,
       concerns: todayLog.context.concerns,
     });
-    return applyVibeToTasks(base, vibe);
+    return applyVibeToTasks(base, activeDirective);
   }, [
     cycle,
     profile,
@@ -360,7 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     todayLog.context.travelling,
     todayLog.context.travelCountry,
     todayLog.context.concerns,
-    vibe,
+    activeDirective,
   ]);
 
   const completeOnboarding: AppContextValue["completeOnboarding"] = useCallback(
@@ -404,6 +434,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return { ...prev, [k]: mutate(current) };
     });
   }, []);
+
+  const dismissMorningBrief = useCallback(async () => {
+    if (!morningBrief) return;
+    upsertTodayLog((log) => ({ ...log, dismissedBriefId: morningBrief.id }));
+  }, [morningBrief, upsertTodayLog]);
 
   // The vent-detected habit→task mapping: snapshot of the live-generated
   // tasks for the user's current state, used to mark matching task ids done.
@@ -646,6 +681,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       vibeLoading,
       applyVibe,
       clearVibe,
+      morningBrief,
+      dismissMorningBrief,
+      activeDirective,
       completeOnboarding,
       signOut,
       addVent,

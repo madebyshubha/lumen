@@ -135,6 +135,21 @@ export function generateMockHealth(
     const steps = Math.round(4500 + rand() * 6000);
     samples.push({ date: d.toISOString(), hrv, restingHr, sleepHours, steps });
   }
+
+  // Deterministic "restless last night" seed so the proactive morning brief
+  // ("I checked your watch — last night was restless") always fires on first
+  // open. This is the headline demo experience for Lumen — without it the
+  // proactive-care card would only show some days. Real wearable data will
+  // replace this when the HealthKit/Google Fit bridge lands.
+  if (samples.length > 0) {
+    const last = samples[samples.length - 1];
+    samples[samples.length - 1] = {
+      ...last,
+      sleepHours: 5.4,
+      hrv: Math.min(last.hrv, 39),
+    };
+  }
+
   const todayHrv = samples[samples.length - 1]?.hrv ?? 50;
   return { periods, samples, todayHrv, todayHrvLow: todayHrv < 42 };
 }
