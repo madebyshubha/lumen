@@ -173,19 +173,32 @@ router.post("/vents/analyze", async (req, res) => {
 
   const body = parsed.data as AnalyzeVentRequest;
 
+  // Server-side timeout so a hung upstream call doesn't hold the request
+  // open forever; clients also enforce their own (shorter) timeout.
+  const UPSTREAM_TIMEOUT_MS = 12_000;
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(
+    () => controller.abort(),
+    UPSTREAM_TIMEOUT_MS,
+  );
+
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 8192,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(body) },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: RESPONSE_SCHEMA,
+    const completion = await openai.chat.completions.create(
+      {
+        model: "gpt-5.2",
+        max_completion_tokens: 8192,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: buildUserPrompt(body) },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: RESPONSE_SCHEMA,
+        },
       },
-    });
+      { signal: controller.signal },
+    );
+    clearTimeout(timeoutHandle);
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
@@ -233,6 +246,24 @@ router.post("/vents/analyze", async (req, res) => {
 
     res.json(response);
   } catch (err) {
+    clearTimeout(timeoutHandle);
+
+    // Distinguish timeout (server-side abort) from other failures so the
+    // client can decide whether to retry or fall back differently.
+    const aborted =
+      controller.signal.aborted ||
+      (err instanceof Error &&
+        (err.name === "AbortError" || /aborted|timeout/i.test(err.message)));
+    if (aborted) {
+      logger.warn({ err }, "vent analyze upstream timeout");
+      const error: VentAnalysisError = {
+        code: "llm_timeout",
+        message: "Upstream timed out",
+      };
+      res.status(504).json(error);
+      return;
+    }
+
     if (isRateLimitError(err)) {
       logger.warn({ err }, "vent analyze rate limited");
       const error: VentAnalysisError = {

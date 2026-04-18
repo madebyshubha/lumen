@@ -244,7 +244,25 @@ export default function VentScreen() {
               </Pressable>
             </GlassCard>
 
-            {lastVent ? (
+            {analyzing ? (
+              <GlassCard style={{ marginTop: 14 }}>
+                <View style={styles.fixHead}>
+                  <View style={[styles.fixIcon, { backgroundColor: palette.accentSoft }]}>
+                    <ActivityIndicator size="small" color={palette.primary} />
+                  </View>
+                  <Text style={[styles.fixLabel, { color: palette.textMuted }]}>
+                    Reading your vent
+                  </Text>
+                </View>
+                <Text style={[styles.headline, { color: palette.text }]}>
+                  Looking at your phase, energy, and what you said…
+                </Text>
+                <Text style={[styles.fixText, { color: palette.textMuted }]}>
+                  This usually takes a few seconds. If the connection is slow, I'll
+                  fall back to a quick local read so you're never stuck waiting.
+                </Text>
+              </GlassCard>
+            ) : lastVent ? (
               <GlassCard style={{ marginTop: 14 }}>
                 <View style={styles.fixHead}>
                   <View style={[styles.fixIcon, { backgroundColor: palette.accentSoft }]}>
@@ -369,6 +387,12 @@ export default function VentScreen() {
                     </View>
                     <Text style={[styles.entryText, { color: palette.text }]}>{v.text}</Text>
 
+                    {v.headline ? (
+                      <Text style={[styles.entryHeadline, { color: palette.text }]}>
+                        {v.headline}
+                      </Text>
+                    ) : null}
+
                     {(v.symptoms.length > 0 || v.habits.length > 0) && (
                       <View style={styles.tagsRow}>
                         {v.symptoms.map((s) => (
@@ -472,6 +496,12 @@ const styles = StyleSheet.create({
   phasePillText: { fontSize: 10, fontFamily: "Inter_600SemiBold", textTransform: "lowercase", letterSpacing: 0.5 },
   entryTime: { fontSize: 11, fontFamily: "Inter_500Medium", marginLeft: "auto" },
   entryText: { fontSize: 14, fontFamily: "Inter_400Regular", lineHeight: 20 },
+  entryHeadline: {
+    fontSize: 14,
+    fontFamily: "Outfit_600SemiBold",
+    lineHeight: 20,
+    marginTop: 8,
+  },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
   tag: {
     flexDirection: "row",
