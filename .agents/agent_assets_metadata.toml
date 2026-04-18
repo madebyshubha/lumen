@@ -1,8 +1,61 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "PhxgeK_KhmM-VXrWmzj4m"
 uri = "file://artifacts/lumen/assets/images/icon.png"
 type = "image"
 title = "lumen app icon"
+
+[[outputs]]
+id = "JK_4LPix7iHBT5y_G0Hwl"
+uri = "file://screenshots/01-signin.jpg"
+type = "image"
+title = "01 — Sign-in / Hero"
+
+[[outputs]]
+id = "qciXagoUu3AspmQ1qHjv7"
+uri = "file://screenshots/02-home-holding-top.jpg"
+type = "image"
+title = "02 — Home, Holding Pattern (top fold)"
+
+[[outputs]]
+id = "I2Z8WLyQCN6n-aT5EFJFq"
+uri = "file://screenshots/03-home-holding-full.jpg"
+type = "image"
+title = "03 — Home, full scroll (proactive brief, mission, tasks, cycle)"
+
+[[outputs]]
+id = "0W24cFo9k3NSRJiAfRmZ3"
+uri = "file://screenshots/04-care-top.jpg"
+type = "image"
+title = "04 — Care tab (top fold)"
+
+[[outputs]]
+id = "LW0v0uZ51RSXNw3_zzMcQ"
+uri = "file://screenshots/05-care-full.jpg"
+type = "image"
+title = "05 — Care tab, full scroll (PCOS protocol, supplements, doctor advice)"
+
+[[outputs]]
+id = "U7VYpxXNwsXBDaJKNR7fW"
+uri = "file://screenshots/06-circle-top.jpg"
+type = "image"
+title = "06 — Circle (community + mood map)"
+
+[[outputs]]
+id = "TS7MbXjgK5daj1IoMcw7p"
+uri = "file://screenshots/07-circle-full.jpg"
+type = "image"
+title = "07 — Circle full (anonymous phase-mates leaderboard)"
+
+[[outputs]]
+id = "hCY3iD0E8FUJE8TGzPL7L"
+uri = "file://screenshots/08-vent.jpg"
+type = "image"
+title = "08 — Vent (single-tap mood / talk-it-out)"
+
+[[outputs]]
+id = "7-dO09EjV7KSutj9XrhlX"
+uri = "file://screenshots/09-profile.jpg"
+type = "image"
+title = "09 — Profile (your space, adaptive task settings)"
