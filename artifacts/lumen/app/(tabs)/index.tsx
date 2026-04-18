@@ -12,7 +12,7 @@ import { MissionCard } from "@/components/MissionCard";
 import { MoodFaceRow } from "@/components/MoodFaceRow";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { PhaseRing } from "@/components/PhaseRing";
-import { Stepper } from "@/components/Stepper";
+import { SleepQuickLog, WaterQuickLog } from "@/components/QuickLog";
 import { StreakChip } from "@/components/StreakChip";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
@@ -21,7 +21,7 @@ import { layoutForDirective, DEFAULT_LAYOUT } from "@/lib/vibeFilter";
 
 export default function DashboardScreen() {
   const palette = usePalette();
-  const { cycle, health, todayLog, addWater, addSleep, tasks, removeConcern, vibe } = useApp();
+  const { cycle, health, todayLog, tasks, removeConcern, vibe } = useApp();
 
   if (!cycle || !health) return null;
 
@@ -203,24 +203,11 @@ export default function DashboardScreen() {
             <MoodFaceRow />
           </GlassCard>
 
-          {/* QUICK STEPPERS */}
+          {/* QUICK LOG — single-tap water (drops) and sleep (chips). No
+              typing, no +/- maths — tap once to log. */}
           <View style={[styles.row, { marginBottom: 18 }]}>
-            <Stepper
-              icon="droplet"
-              label="Water"
-              value={`${todayLog.waterCups} / 8`}
-              hint="cups today"
-              onMinus={() => addWater(-1)}
-              onPlus={() => addWater(1)}
-            />
-            <Stepper
-              icon="moon"
-              label="Sleep"
-              value={`${todayLog.sleepHours.toFixed(1)}h`}
-              hint="last night"
-              onMinus={() => addSleep(-0.5)}
-              onPlus={() => addSleep(0.5)}
-            />
+            <WaterQuickLog />
+            <SleepQuickLog />
           </View>
 
           {/* LEAN-IN TASKS — phase-flavoured, important but not critical.

@@ -114,7 +114,9 @@ type AppContextValue = {
   setMood: (mood: number) => Promise<void>;
   toggleTask: (taskId: string) => Promise<void>;
   addWater: (delta: number) => Promise<void>;
+  setWater: (cups: number) => Promise<void>;
   addSleep: (delta: number) => Promise<void>;
+  setSleep: (hours: number) => Promise<void>;
   setLocation: (location: string) => Promise<void>;
   setTravelling: (travelling: boolean, country?: CountryCode) => Promise<void>;
   addMeal: (slot: MealSlot, text: string) => Promise<void>;
@@ -476,11 +478,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [upsertTodayLog],
   );
 
+  const setWater: AppContextValue["setWater"] = useCallback(
+    async (cups) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        waterCups: Math.max(0, Math.min(12, Math.round(cups))),
+      }));
+    },
+    [upsertTodayLog],
+  );
+
   const addSleep: AppContextValue["addSleep"] = useCallback(
     async (delta) => {
       upsertTodayLog((log) => ({
         ...log,
         sleepHours: Math.max(0, Math.min(14, Math.round((log.sleepHours + delta) * 10) / 10)),
+      }));
+    },
+    [upsertTodayLog],
+  );
+
+  const setSleep: AppContextValue["setSleep"] = useCallback(
+    async (hours) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        sleepHours: Math.max(0, Math.min(14, Math.round(hours * 10) / 10)),
       }));
     },
     [upsertTodayLog],
@@ -631,7 +653,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setMood,
       toggleTask,
       addWater,
+      setWater,
       addSleep,
+      setSleep,
       setLocation,
       setTravelling,
       addMeal,
@@ -642,7 +666,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
       vibe, vibeLoading, applyVibe, clearVibe,
-      completeOnboarding, signOut, addVent, updateVent, setMood, toggleTask, addWater, addSleep,
+      completeOnboarding, signOut, addVent, updateVent, setMood, toggleTask,
+      addWater, setWater, addSleep, setSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
     ],
   );
