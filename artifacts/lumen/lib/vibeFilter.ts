@@ -33,10 +33,12 @@ export function layoutForDirective(directive: VibeDirective): VibeLayout {
     showLean: level <= 0 || directive.promoteLean,
     // "If you can" disappears at level 1+
     showGentle: level <= 0,
-    // Calendar / next-7 / cycle stats survive at level 1, drop at 2+
+    // Calendar / next-7 / cycle stats survive at level 1, drop at 2+ so
+    // low-mood (which the server returns at simplifyLevel 2) collapses the
+    // whole bottom of the home, not just the bonus sections.
     showCalendar: level <= 1,
     showNext7: level <= 1,
-    showCycleStats: level <= 2,
+    showCycleStats: level <= 1,
     promoteLean: directive.promoteLean,
     paletteIntensity: directive.paletteIntensity,
   };
