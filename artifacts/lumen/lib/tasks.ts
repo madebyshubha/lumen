@@ -48,31 +48,33 @@ export type TaskContext = {
 };
 
 function holdingTasks(): Task[] {
+  // Holding Pattern is the in-between time — her body is trying to ovulate
+  // but hasn't yet. The brief is gentle nudges, not heavy prescriptions.
   return [
     {
-      id: "holding-strength",
-      title: "Strength training, 25 min",
-      detail: "Heavy compound lifts beat any cardio for this.",
-      why: "Lean muscle is the #1 lever for insulin sensitivity — and insulin sensitivity is what gets ovulation back.",
-      kind: "movement",
-      priority: "important",
-    },
-    {
-      id: "holding-stress",
-      title: "10-minute nervous-system reset",
-      detail: "Slow nasal breathing, feet on the ground, no phone.",
-      why: "Chronic stress raises cortisol, which suppresses ovulation. Lowering it is direct hormonal work.",
-      kind: "mindset",
-      priority: "important",
-      habit: "meditate",
-    },
-    {
-      id: "holding-inositol",
-      title: "Myo-inositol with breakfast",
-      detail: "2g, paired with protein.",
-      why: "Inositol restores ovulation in PCOS in many studies — it's a tool for exactly this state.",
-      kind: "supplement",
+      id: "holding-fiber",
+      title: "Focus on fiber today to help your hormones",
+      detail: "Lentils, berries, greens, chia — aim for 30g across the day.",
+      why: "Fiber binds excess estrogen so your body can clear it, and it slows the glucose spike that keeps insulin (and PCOS symptoms) high.",
+      kind: "food",
       priority: "gentle",
+    },
+    {
+      id: "holding-walk",
+      title: "Let's do a 10-minute walk to keep insulin steady",
+      detail: "After a meal is best — even slow pace counts.",
+      why: "A short walk after eating cuts the post-meal glucose spike by about 20%. Steady glucose is one of the levers that helps ovulation come back.",
+      kind: "movement",
+      priority: "gentle",
+    },
+    {
+      id: "holding-sleep",
+      title: "Sleep 8 hours to lower cortisol",
+      detail: "Lights down by 10pm, screens away an hour before bed.",
+      why: "Cortisol (your stress hormone) competes with the hormones that trigger ovulation. Real sleep is the simplest way to bring it down.",
+      kind: "rest",
+      priority: "gentle",
+      habit: "sleep",
     },
   ];
 }
