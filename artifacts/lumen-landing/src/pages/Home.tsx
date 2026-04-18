@@ -4,6 +4,7 @@ import { PhaseSection } from "@/components/PhaseSection";
 import { Features } from "@/components/Features";
 import { HowItWorks } from "@/components/HowItWorks";
 import { QrCTA } from "@/components/QrCTA";
+import { ClosingCta } from "@/components/ClosingCta";
 import { Footer } from "@/components/Footer";
 
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
         </section>
         <HowItWorks />
         <QrCTA />
+        <ClosingCta />
       </main>
       <Footer />
     </div>
