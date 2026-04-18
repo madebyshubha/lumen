@@ -23,7 +23,7 @@ export function Footer() {
               <li>
                 <a
                   href="#features"
-                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   Features
                 </a>
@@ -31,7 +31,7 @@ export function Footer() {
               <li>
                 <a
                   href="#how"
-                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   How it works
                 </a>
@@ -39,7 +39,7 @@ export function Footer() {
               <li>
                 <a
                   href="#try-it"
-                  className="inline-flex items-center gap-2 hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center gap-2 hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   <Smartphone className="w-4 h-4" />
                   Try it
@@ -56,7 +56,7 @@ export function Footer() {
               <li>
                 <a
                   href="#"
-                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   About
                 </a>
@@ -64,7 +64,7 @@ export function Footer() {
               <li>
                 <a
                   href="#"
-                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   Privacy
                 </a>
@@ -72,7 +72,7 @@ export function Footer() {
               <li>
                 <a
                   href="#"
-                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   Terms
                 </a>
@@ -80,7 +80,7 @@ export function Footer() {
               <li>
                 <a
                   href="mailto:hello@lumen.app"
-                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                  className="inline-flex min-h-[44px] items-center hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-1"
                 >
                   Contact
                 </a>

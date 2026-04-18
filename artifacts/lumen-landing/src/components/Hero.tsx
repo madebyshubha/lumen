@@ -144,22 +144,27 @@ export function Hero() {
                       first.
                     </p>
                     {qr.kind === "ready" && (
-                      <button
-                        type="button"
-                        onClick={onCopy}
-                        className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#d97639]/25 bg-white px-3 py-1.5 text-xs font-medium text-[#3b1c0a] transition-colors hover:bg-[#fff3e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/50"
-                        aria-label="Copy Expo link to clipboard"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="h-3.5 w-3.5" /> Link copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="h-3.5 w-3.5" /> Copy link
-                          </>
-                        )}
-                      </button>
+                      <div className="mt-3 flex items-center gap-2">
+                        <code className="flex-1 min-w-0 truncate rounded-full border border-[#d97639]/15 bg-white px-3 py-2 font-mono text-[11px] leading-none text-[#3b1c0a]">
+                          {qr.expoUrl}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={onCopy}
+                          className="inline-flex min-h-[44px] flex-shrink-0 items-center gap-1.5 rounded-full border border-[#d97639]/25 bg-white px-3 text-xs font-medium text-[#3b1c0a] transition-colors hover:bg-[#fff3e9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/50"
+                          aria-label="Copy Expo link to clipboard"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="h-3.5 w-3.5" /> Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5" /> Copy
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

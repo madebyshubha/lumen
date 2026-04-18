@@ -53,7 +53,49 @@
   --font-display: 'Outfit', sans-serif;
 }
 
+/*
+ * Lumen landing — shared design tokens
+ * Spacing rhythm: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 / 96 / 128
+ * Type scale:    12 / 14 / 16 / 18 / 24 / 32 / 48 / 72
+ * Section ymax:  py-32  (8rem)   — large breathing room between sections
+ * Card radius:   rounded-3xl     — consistent across feature/step/phase cards
+ * Warm palette:  ink #3b1c0a, mid #8c5a3a, terracotta #d97639,
+ *                cream #fff3e9, butter #fff8e7, teal #1c8a7c, gold #d49b1a
+ * Accent rule:   one accent per section; terracotta is primary, teal/gold
+ *                are secondary signals only (Try-it = teal, How-it = gold).
+ */
 :root {
+  /* Spacing scale (4/8pt) */
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-6: 1.5rem;   /* 24 */
+  --space-8: 2rem;     /* 32 */
+  --space-12: 3rem;    /* 48 */
+  --space-16: 4rem;    /* 64 */
+  --space-24: 6rem;    /* 96 */
+  --space-32: 8rem;    /* 128 */
+
+  /* Type scale */
+  --text-xs: 0.75rem;  /* 12 */
+  --text-sm: 0.875rem; /* 14 */
+  --text-base: 1rem;   /* 16 */
+  --text-lg: 1.125rem; /* 18 */
+  --text-2xl: 1.5rem;  /* 24 */
+  --text-3xl: 2rem;    /* 32 */
+  --text-5xl: 3rem;    /* 48 */
+  --text-7xl: 4.5rem;  /* 72 */
+
+  /* Warm palette */
+  --warm-ink: #3b1c0a;
+  --warm-mid: #8c5a3a;
+  --warm-terracotta: #d97639;
+  --warm-cream: #fff3e9;
+  --warm-butter: #fff8e7;
+  --warm-teal: #1c8a7c;
+  --warm-gold: #d49b1a;
+
   /* Base - Warm terracotta vibe (Luteal) */
   --background: 28 100% 95%; /* #fff3e9 */
   --foreground: 23 71% 13%; /* #3b1c0a */
