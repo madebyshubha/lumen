@@ -3,6 +3,7 @@ import React from "react";
 import { Dimensions, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "@/components/GlassCard";
+import { Leaderboard } from "@/components/Leaderboard";
 import { MoodMap } from "@/components/MoodMap";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { TopBar } from "@/components/TopBar";
@@ -48,6 +49,8 @@ export default function CircleScreen() {
           <View style={{ alignItems: "center", marginBottom: 16 }}>
             <MoodMap width={mapWidth} height={mapHeight} />
           </View>
+
+          <Leaderboard />
 
           <GlassCard style={{ marginBottom: 16 }}>
             <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 12 }]}>

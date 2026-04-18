@@ -17,9 +17,19 @@ export function TopBar({ greeting }: { greeting?: string }) {
       <View style={[styles.avatar, { backgroundColor: palette.primary }]}>
         <Text style={[styles.initial, { color: palette.isDark ? "#0f1024" : "#ffffff" }]}>{initials}</Text>
       </View>
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Text style={[styles.hello, { color: palette.textMuted }]}>{greeting ?? "Today"}</Text>
-        <Text style={[styles.name, { color: palette.text }]} numberOfLines={1}>
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 8, minWidth: 0 }}>
+        <Text
+          style={[styles.hello, { color: palette.textMuted }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {greeting ?? "Today"}
+        </Text>
+        <Text
+          style={[styles.name, { color: palette.text }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {profile?.name ?? "Lumen"}
         </Text>
       </View>

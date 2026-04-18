@@ -42,6 +42,14 @@ export type Profile = {
   lastPeriodISO: string;
   cycleLength: number;
   createdAt: string;
+  bestStreak?: number; // longest run of consecutive logged days
+};
+
+export type StreakInfo = {
+  current: number; // consecutive logged days ending today (or yesterday if today is empty)
+  best: number;
+  loggedToday: boolean;
+  last14: boolean[]; // newest-last; true = day had any activity
 };
 
 export type VentEntry = {
@@ -79,6 +87,7 @@ type AppContextValue = {
   vents: VentEntry[];
   todayLog: DailyLog;
   tasks: Task[];
+  streak: StreakInfo;
   completeOnboarding: (input: {
     name: string;
     provider: "apple" | "google";
@@ -103,10 +112,25 @@ type AppContextValue = {
 const AppContext = createContext<AppContextValue | null>(null);
 
 function todayKey(): string {
-  const d = new Date();
+  return dateKey(new Date());
+}
+
+function dateKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function logHasActivity(log: DailyLog | undefined): boolean {
+  if (!log) return false;
+  if (log.mood !== undefined) return true;
+  if (log.waterCups > 0) return true;
+  if (log.sleepHours > 0) return true;
+  if (log.completedTaskIds.length > 0) return true;
+  if (log.completedHabits.length > 0) return true;
+  if (log.context.meals.length > 0) return true;
+  if (log.context.concerns.length > 0) return true;
+  return false;
 }
 
 function emptyLog(): DailyLog {
@@ -226,6 +250,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const todayLog = useMemo<DailyLog>(() => {
     return logs[todayKey()] ?? emptyLog();
   }, [logs]);
+
+  // Days that have any activity = log activity OR a vent posted that day.
+  const activeDayKeys = useMemo<Set<string>>(() => {
+    const set = new Set<string>();
+    for (const [k, v] of Object.entries(logs)) {
+      if (logHasActivity(v)) set.add(k);
+    }
+    for (const v of vents) {
+      set.add(dateKey(new Date(v.createdAt)));
+    }
+    return set;
+  }, [logs, vents]);
+
+  const streak = useMemo<StreakInfo>(() => {
+    const today = new Date();
+    const todayK = dateKey(today);
+    const loggedToday = activeDayKeys.has(todayK);
+
+    // Walk backwards from today (or yesterday if today is empty) until a gap.
+    let cursor = new Date(today);
+    if (!loggedToday) cursor.setDate(cursor.getDate() - 1);
+    let current = 0;
+    while (activeDayKeys.has(dateKey(cursor))) {
+      current += 1;
+      cursor.setDate(cursor.getDate() - 1);
+      if (current > 999) break; // safety
+    }
+
+    // Last 14 days, oldest-first ending today.
+    const last14: boolean[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      last14.push(activeDayKeys.has(dateKey(d)));
+    }
+
+    const stored = profile?.bestStreak ?? 0;
+    const best = Math.max(stored, current);
+    return { current, best, loggedToday, last14 };
+  }, [activeDayKeys, profile?.bestStreak]);
+
+  // Persist a new best streak onto the profile so it survives missed days.
+  useEffect(() => {
+    if (!profile) return;
+    if (streak.current > (profile.bestStreak ?? 0)) {
+      setProfile((prev) => (prev ? { ...prev, bestStreak: streak.current } : prev));
+    }
+  }, [streak.current, profile]);
 
   const tasks = useMemo<Task[]>(() => {
     if (!cycle || !profile) return [];
@@ -447,6 +519,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       vents,
       todayLog,
       tasks,
+      streak,
       completeOnboarding,
       signOut,
       addVent,
@@ -462,7 +535,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       removeConcern,
     }),
     [
-      ready, profile, cycle, health, palette, vents, todayLog, tasks,
+      ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
       completeOnboarding, signOut, addVent, setMood, toggleTask, addWater, addSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
     ],

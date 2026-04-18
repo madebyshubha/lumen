@@ -12,6 +12,7 @@ import { MoodFaceRow } from "@/components/MoodFaceRow";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { PhaseRing } from "@/components/PhaseRing";
 import { Stepper } from "@/components/Stepper";
+import { StreakChip } from "@/components/StreakChip";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
 import { concernLabel } from "@/lib/protocols";
@@ -78,6 +79,9 @@ export default function DashboardScreen() {
               />
             </View>
           </GlassCard>
+
+          {/* STREAK CHIP — daily-log motivator with 14-day mini history. */}
+          <StreakChip />
 
           {/* CARE CTA — gives the user a path when they have a chronic problem. */}
           <Pressable

@@ -13,6 +13,30 @@ type Props = {
   bottomLabel: string;
 };
 
+// The inner text scales with `size` so a compact 96-px ring stays readable
+// without the value crowding the curved labels above and below.
+function scaleText(size: number) {
+  if (size <= 110) {
+    return {
+      top: { fontSize: 9, letterSpacing: 1, marginBottom: 1 },
+      value: { fontSize: 22, marginVertical: 0 },
+      bottom: { fontSize: 10, marginTop: 1 },
+    };
+  }
+  if (size <= 150) {
+    return {
+      top: { fontSize: 10, letterSpacing: 1.2, marginBottom: 2 },
+      value: { fontSize: 32, marginVertical: 1 },
+      bottom: { fontSize: 11, marginTop: 1 },
+    };
+  }
+  return {
+    top: { fontSize: 11, letterSpacing: 1.5, marginBottom: 2 },
+    value: { fontSize: 44, marginVertical: 2 },
+    bottom: { fontSize: 13, marginTop: 0 },
+  };
+}
+
 export function PhaseRing({
   size = 200,
   strokeWidth = 14,
@@ -25,6 +49,9 @@ export function PhaseRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - Math.max(0, Math.min(1, progress)));
+  const t = scaleText(size);
+  // Inner text box must stay clear of the stroke. Inset by stroke + small pad.
+  const inset = strokeWidth + 6;
 
   return (
     <View style={[styles.wrap, { width: size, height: size }]}>
@@ -56,10 +83,56 @@ export function PhaseRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={styles.center} pointerEvents="none">
-        <Text style={[styles.top, { color: palette.textMuted }]}>{topLabel}</Text>
-        <Text style={[styles.value, { color: palette.text }]}>{centerValue}</Text>
-        <Text style={[styles.bottom, { color: palette.textMuted }]}>{bottomLabel}</Text>
+      <View
+        style={[
+          styles.center,
+          { top: inset, bottom: inset, left: inset, right: inset },
+        ]}
+        pointerEvents="none"
+      >
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[
+            styles.top,
+            {
+              color: palette.textMuted,
+              fontSize: t.top.fontSize,
+              letterSpacing: t.top.letterSpacing,
+              marginBottom: t.top.marginBottom,
+            },
+          ]}
+        >
+          {topLabel}
+        </Text>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[
+            styles.value,
+            {
+              color: palette.text,
+              fontSize: t.value.fontSize,
+              marginVertical: t.value.marginVertical,
+            },
+          ]}
+        >
+          {centerValue}
+        </Text>
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          style={[
+            styles.bottom,
+            {
+              color: palette.textMuted,
+              fontSize: t.bottom.fontSize,
+              marginTop: t.bottom.marginTop,
+            },
+          ]}
+        >
+          {bottomLabel}
+        </Text>
       </View>
     </View>
   );
@@ -68,11 +141,11 @@ export function PhaseRing({
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", justifyContent: "center" },
   center: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
     alignItems: "center",
     justifyContent: "center",
   },
-  top: { fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", fontFamily: "Inter_500Medium" },
-  value: { fontSize: 44, fontFamily: "Inter_700Bold", marginTop: 4, marginBottom: 2 },
-  bottom: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  top: { textTransform: "uppercase", fontFamily: "Inter_500Medium", textAlign: "center" },
+  value: { fontFamily: "Inter_700Bold", textAlign: "center", lineHeight: undefined },
+  bottom: { fontFamily: "Inter_500Medium", textAlign: "center" },
 });
