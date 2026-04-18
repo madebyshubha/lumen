@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { PlayCircle, Mail, Check } from "lucide-react";
+import { Mail, Check } from "lucide-react";
 
 export function ClosingCta() {
   const [email, setEmail] = useState("");
@@ -35,19 +35,11 @@ export function ClosingCta() {
             One soft companion. Every cycle.
           </h2>
           <p className="text-base md:text-lg text-white/75 max-w-xl mx-auto mb-10 leading-relaxed">
-            Watch the trailer or leave your email — we'll let you know the
-            moment Lumen lands on the App Store.
+            Leave your email — we'll let you know the moment Lumen lands on
+            the App Store.
           </p>
 
           <div className="flex flex-col items-center gap-6">
-            <a
-              href="/lumen-trailer/"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white text-[#3b1c0a] font-medium hover:bg-white/90 transition-colors"
-            >
-              <PlayCircle className="w-5 h-5" />
-              Watch the trailer
-            </a>
-
             <form
               onSubmit={handleSubmit}
               className="w-full max-w-md flex flex-col sm:flex-row gap-2 bg-white/10 backdrop-blur-md p-2 rounded-full border border-white/15"

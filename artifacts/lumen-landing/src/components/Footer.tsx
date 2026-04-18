@@ -1,4 +1,4 @@
-import { PlayCircle, Smartphone } from "lucide-react";
+import { Smartphone } from "lucide-react";
 
 export function Footer() {
   return (
@@ -37,15 +37,6 @@ export function Footer() {
                 >
                   <Smartphone className="w-4 h-4" />
                   Try it
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/lumen-trailer/"
-                  className="inline-flex items-center gap-2 hover:opacity-70 transition-opacity"
-                >
-                  <PlayCircle className="w-4 h-4" />
-                  Trailer
                 </a>
               </li>
             </ul>

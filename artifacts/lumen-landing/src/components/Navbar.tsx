@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { PlayCircle } from "lucide-react";
 
 export function Navbar() {
   return (
@@ -24,13 +23,6 @@ export function Navbar() {
         </a>
         <a href="#try-it" className="hover:opacity-80 transition-opacity">
           Try it
-        </a>
-        <a
-          href="/lumen-trailer/"
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-        >
-          <PlayCircle className="w-4 h-4" />
-          Trailer
         </a>
       </div>
       <a
