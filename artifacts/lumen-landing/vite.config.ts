@@ -26,8 +26,22 @@ if (!basePath) {
   );
 }
 
+const isResolved = (value: string | undefined): value is string =>
+  typeof value === "string" && value.length > 0 && !value.startsWith("$");
+
+const expoDevDomain = isResolved(process.env.VITE_REPLIT_EXPO_DEV_DOMAIN)
+  ? process.env.VITE_REPLIT_EXPO_DEV_DOMAIN
+  : isResolved(process.env.REPLIT_EXPO_DEV_DOMAIN)
+    ? process.env.REPLIT_EXPO_DEV_DOMAIN
+    : "";
+
+process.env.VITE_REPLIT_EXPO_DEV_DOMAIN = expoDevDomain;
+
 export default defineConfig({
   base: basePath,
+  define: {
+    "import.meta.env.VITE_REPLIT_EXPO_DEV_DOMAIN": JSON.stringify(expoDevDomain),
+  },
   plugins: [
     react(),
     tailwindcss(),

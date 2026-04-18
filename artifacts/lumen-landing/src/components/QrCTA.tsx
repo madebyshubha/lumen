@@ -22,7 +22,7 @@ export function QrCTA() {
     | string
     | undefined;
   const expoUrl = useMemo(
-    () => (domain ? `exp://${domain}` : null),
+    () => (domain ? `exps://${domain}` : null),
     [domain],
   );
 
