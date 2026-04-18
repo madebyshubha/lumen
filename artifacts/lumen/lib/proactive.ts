@@ -60,7 +60,7 @@ export function buildProactiveBrief(input: {
     return {
       id: `brief:${day}:restless`,
       reason: "restless-night",
-      title: "I checked your watch — last night was restless",
+      title: "I checked your overnight data — last night was restless",
       detail:
         lastSleep > 0
           ? `You slept ${lastSleep.toFixed(1)}h${

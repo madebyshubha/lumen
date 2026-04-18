@@ -30,7 +30,7 @@ export function MorningBrief() {
               { backgroundColor: palette.primarySoft },
             ]}
           >
-            <Feather name="watch" size={16} color={palette.primary} />
+            <Feather name="activity" size={16} color={palette.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.eyebrow, { color: palette.primary }]}>

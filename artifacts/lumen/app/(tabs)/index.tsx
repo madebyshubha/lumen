@@ -72,10 +72,11 @@ export default function DashboardScreen() {
         <TopBar greeting={`${cycle.phase} day ${cycle.dayOfCycle}`} />
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* MORNING BRIEF — proactive care card. "I checked your watch,
-              you had a restless night, I moved your workout and made
-              hydration today's goal." This is the headline moment of the
-              app: it greets you having already done work for you. */}
+          {/* MORNING BRIEF — proactive care card. "I checked your overnight
+              data, you had a restless night, I moved your workout and made
+              hydration today's goal." Device-agnostic copy so the same
+              brief works whether the signal came from a wearable or the
+              phone's own sensors. */}
           <MorningBrief />
 
           {/* FEELING HEADER — tap a face to log your mood AND reshape the
