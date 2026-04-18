@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { PlayCircle, Smartphone } from "lucide-react";
+import { Smartphone } from "lucide-react";
 import screenHome from "@/assets/images/screen-home.jpg";
 import screenCare from "@/assets/images/screen-care.jpg";
 
@@ -109,13 +109,6 @@ export function Hero() {
             >
               <Smartphone className="h-5 w-5" />
               Try it in Expo Go
-            </a>
-            <a
-              href="/lumen-trailer/"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#3b1c0a]/15 bg-white/70 px-7 py-4 font-medium text-[#3b1c0a] backdrop-blur-md transition-colors hover:bg-white sm:w-auto"
-            >
-              <PlayCircle className="h-5 w-5" />
-              Watch the trailer
             </a>
           </div>
 
