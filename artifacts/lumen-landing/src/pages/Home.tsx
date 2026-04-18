@@ -1,3 +1,4 @@
+import { MotionConfig } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { PhaseSection } from "@/components/PhaseSection";
@@ -9,22 +10,24 @@ import { Footer } from "@/components/Footer";
 
 export default function Home() {
   return (
-    <div
-      id="top"
-      className="min-h-[100dvh] w-full flex flex-col bg-background selection:bg-primary/20"
-    >
-      <Navbar />
-      <main className="flex-1">
-        <Hero />
-        <PhaseSection />
-        <section id="features">
-          <Features />
-        </section>
-        <HowItWorks />
-        <QrCTA />
-        <ClosingCta />
-      </main>
-      <Footer />
-    </div>
+    <MotionConfig reducedMotion="user">
+      <div
+        id="top"
+        className="min-h-[100dvh] w-full flex flex-col bg-background selection:bg-primary/20"
+      >
+        <Navbar />
+        <main className="flex-1">
+          <Hero />
+          <PhaseSection />
+          <section id="features">
+            <Features />
+          </section>
+          <HowItWorks />
+          <QrCTA />
+          <ClosingCta />
+        </main>
+        <Footer />
+      </div>
+    </MotionConfig>
   );
 }

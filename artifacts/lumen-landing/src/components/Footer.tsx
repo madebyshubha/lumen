@@ -2,11 +2,11 @@ import { Smartphone } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="bg-white pt-16 pb-10 border-t border-[#d47128]/10">
+    <footer className="bg-white pt-16 pb-10 border-t border-[#3b1c0a]/8">
       <div className="container mx-auto px-6 max-w-5xl">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
           <div className="md:col-span-2">
-            <p className="font-display text-2xl font-semibold text-[#3b1c0a] mb-3">
+            <p className="font-display text-2xl font-semibold text-[#3b1c0a] mb-3 tracking-tight">
               Lumen
             </p>
             <p className="text-sm text-[#8c5a3a] leading-relaxed max-w-xs">
@@ -16,24 +16,30 @@ export function Footer() {
           </div>
 
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-[#8c5a3a] font-medium mb-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#8c5a3a] font-medium mb-4">
               Explore
             </p>
-            <ul className="space-y-2 text-sm text-[#3b1c0a]">
+            <ul className="space-y-2.5 text-sm text-[#3b1c0a]">
               <li>
-                <a href="#features" className="hover:opacity-70 transition-opacity">
+                <a
+                  href="#features"
+                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                >
                   Features
                 </a>
               </li>
               <li>
-                <a href="#how" className="hover:opacity-70 transition-opacity">
+                <a
+                  href="#how"
+                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                >
                   How it works
                 </a>
               </li>
               <li>
                 <a
                   href="#try-it"
-                  className="inline-flex items-center gap-2 hover:opacity-70 transition-opacity"
+                  className="inline-flex items-center gap-2 hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
                 >
                   <Smartphone className="w-4 h-4" />
                   Try it
@@ -43,29 +49,38 @@ export function Footer() {
           </div>
 
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-[#8c5a3a] font-medium mb-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#8c5a3a] font-medium mb-4">
               Company
             </p>
-            <ul className="space-y-2 text-sm text-[#3b1c0a]">
+            <ul className="space-y-2.5 text-sm text-[#3b1c0a]">
               <li>
-                <a href="#" className="hover:opacity-70 transition-opacity">
+                <a
+                  href="#"
+                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                >
                   About
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:opacity-70 transition-opacity">
+                <a
+                  href="#"
+                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                >
                   Privacy
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:opacity-70 transition-opacity">
+                <a
+                  href="#"
+                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
+                >
                   Terms
                 </a>
               </li>
               <li>
                 <a
                   href="mailto:hello@lumen.app"
-                  className="hover:opacity-70 transition-opacity"
+                  className="hover:text-[#d97639] transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d97639]/40 px-0.5"
                 >
                   Contact
                 </a>
@@ -74,11 +89,11 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-[#d47128]/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="pt-8 border-t border-[#3b1c0a]/8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-[#8c5a3a]">
             &copy; {new Date().getFullYear()} Lumen. Made gently.
           </p>
-          <p className="text-xs text-[#8c5a3a]">
+          <p className="text-xs text-[#8c5a3a] max-w-md text-center sm:text-right">
             Lumen is a wellness companion. It does not provide medical advice or
             replace your clinician.
           </p>

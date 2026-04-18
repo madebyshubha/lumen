@@ -52,57 +52,76 @@ export function PhaseSection() {
     <section className="py-32 bg-[#fff3e9] relative">
       <div className="container mx-auto px-6 max-w-6xl relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-20"
+          transition={{ duration: 0.7 }}
+          className="text-center mb-20 max-w-2xl mx-auto"
         >
-          <h2 className="text-4xl md:text-5xl font-display font-medium text-[#3b1c0a] mb-6">
-            A phase-fluid dashboard.
+          <p className="text-xs uppercase tracking-[0.18em] font-medium text-[#d97639] mb-4">
+            Phase-fluid logic
+          </p>
+          <h2 className="text-4xl md:text-5xl font-display font-medium text-[#3b1c0a] mb-5 leading-[1.05]">
+            Your home screen
+            <br />
+            <span className="text-[#8c5a3a]">reshapes around you.</span>
           </h2>
-          <p className="text-lg text-[#8c5a3a] max-w-2xl mx-auto">
-            Your home screen reshapes completely around your cycle phase, energy, and mood. It even recognizes a "Holding Pattern" when ovulation isn't confirmed yet.
+          <p className="text-lg text-[#8c5a3a] leading-relaxed">
+            Palette, missions, copy — even what Lumen asks of you. And when
+            ovulation isn't confirmed yet, it quietly enters a Holding Pattern.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
           {phases.map((phase, i) => (
             <motion.div
               key={phase.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.7, delay: i * 0.1 }}
-              className="relative rounded-[2rem] overflow-hidden aspect-square md:aspect-[4/5] flex items-end p-8"
+              transition={{ duration: 0.6, delay: Math.min(i * 0.08, 0.24) }}
+              className="relative rounded-[2rem] overflow-hidden aspect-square md:aspect-[4/5] flex items-end p-7"
               style={{ backgroundColor: phase.color }}
             >
-              <img 
-                src={phase.bgImg} 
-                alt={`${phase.name} glow`} 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
+              <img
+                src={phase.bgImg}
+                alt=""
+                aria-hidden
+                className="absolute inset-0 w-full h-full object-cover opacity-50 mix-blend-overlay"
               />
-              
+
               <div
-                className="absolute top-8 right-8 w-3 h-3 rounded-full shadow-lg"
-                style={{ backgroundColor: phase.accent, boxShadow: `0 0 24px ${phase.accent}` }}
+                className="absolute top-7 right-7 w-2.5 h-2.5 rounded-full"
+                style={{
+                  backgroundColor: phase.accent,
+                  boxShadow: `0 0 20px ${phase.accent}`,
+                }}
                 aria-hidden
               />
 
-              <div className="relative z-10 glass-card p-6 rounded-2xl w-full">
+              <div className="relative z-10 rounded-2xl bg-white/55 backdrop-blur-md border border-white/35 p-5 w-full">
                 <div
-                  className="text-[11px] uppercase tracking-[0.18em] font-medium mb-3 opacity-70"
+                  className="text-[10px] uppercase tracking-[0.2em] font-medium mb-2.5"
                   style={{ color: phase.accent }}
                 >
-                  Phase {i + 1}
+                  Phase 0{i + 1}
                 </div>
-                <h3 className="text-2xl font-display font-medium mb-2" style={{ color: phase.text }}>
+                <h3
+                  className="text-xl font-display font-medium mb-1.5"
+                  style={{ color: phase.text }}
+                >
                   {phase.name}
                 </h3>
-                <p className="opacity-80 mb-3" style={{ color: phase.text }}>
+                <p
+                  className="text-sm font-medium mb-2 opacity-85"
+                  style={{ color: phase.text }}
+                >
                   {phase.tagline}
                 </p>
-                <p className="text-sm opacity-60" style={{ color: phase.text }}>
+                <p
+                  className="text-xs opacity-65 leading-relaxed"
+                  style={{ color: phase.text }}
+                >
                   {phase.note}
                 </p>
               </div>
