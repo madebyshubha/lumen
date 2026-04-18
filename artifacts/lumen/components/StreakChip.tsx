@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -21,7 +21,7 @@ export function StreakChip() {
         style={styles.row}
       >
         <View style={[styles.iconWrap, { backgroundColor: palette.primarySoft }]}>
-          <Feather name="zap" size={16} color={flameColor} />
+          <MaterialCommunityIcons name="fire" size={18} color={flameColor} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.titleRow}>

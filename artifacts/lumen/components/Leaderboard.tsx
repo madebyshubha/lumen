@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { GlassCard } from "@/components/GlassCard";
@@ -41,6 +41,16 @@ export function Leaderboard() {
   // — kudos are a soft, ephemeral gesture, not persistent social currency.
   const [kudosByDay, setKudosByDay] = useState<Record<string, Record<string, number>>>({});
   const [toast, setToast] = useState<string | null>(null);
+  // Tracked so the auto-dismiss timer is cleared on unmount and avoids
+  // setting state on an unmounted component during fast navigation.
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
 
   const todayKey = dateKey(new Date());
   const todaysKudos = kudosByDay[todayKey] ?? {};
@@ -53,8 +63,13 @@ export function Leaderboard() {
       const dayMap = prev[day] ?? {};
       return { ...prev, [day]: { ...dayMap, [row.id]: (dayMap[row.id] ?? 0) + 1 } };
     });
-    setToast(`Kudos sent to ${row.handle}`);
-    setTimeout(() => setToast((t) => (t === `Kudos sent to ${row.handle}` ? null : t)), 1800);
+    const message = `Kudos sent to ${row.handle}`;
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      setToast((t) => (t === message ? null : t));
+      toastTimer.current = null;
+    }, 1800);
   };
 
   if (!cycle) return null;
