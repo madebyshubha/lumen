@@ -75,7 +75,7 @@ export function QrCTA() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Block 1: Try the live preview (QR + tap-to-open + copy link) */}
+          {/* Block 1: Try the live preview (QR + tap-to-open + copy link + Expo Go install hint) */}
           <div className="glass-card rounded-[2.5rem] p-8 md:p-10 bg-white/50 border border-white/60 flex flex-col">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-medium text-[#1c8a7c] mb-3">
               <Smartphone className="w-4 h-4" />
@@ -85,7 +85,26 @@ export function QrCTA() {
               Open Lumen in Expo Go
             </h3>
             <p className="text-sm text-[#8c5a3a] mb-6 leading-relaxed">
-              Install Expo Go on your phone, then{" "}
+              Lumen runs inside the Expo Go preview app while we polish the
+              standalone build. Install Expo Go (
+              <a
+                href="https://apps.apple.com/app/expo-go/id982107779"
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-[#d97639]/40 underline-offset-2 hover:text-[#d97639]"
+              >
+                iOS
+              </a>{" "}
+              /{" "}
+              <a
+                href="https://play.google.com/store/apps/details?id=host.exp.exponent"
+                target="_blank"
+                rel="noreferrer"
+                className="underline decoration-[#d97639]/40 underline-offset-2 hover:text-[#d97639]"
+              >
+                Android
+              </a>
+              ), then{" "}
               {isMobile
                 ? "tap the button below to open Lumen instantly."
                 : "scan this code with your camera. Lumen opens in seconds."}
@@ -177,49 +196,52 @@ export function QrCTA() {
             </div>
           </div>
 
-          {/* Block 2: Download the app */}
+          {/* Block 2: Download the Lumen app (placeholder store links) */}
           <div className="glass-card rounded-[2.5rem] p-8 md:p-10 bg-white/50 border border-white/60 flex flex-col">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] font-medium text-[#d97639] mb-3">
               <Download className="w-4 h-4" />
               Download the app
             </div>
             <h3 className="text-2xl font-display font-medium text-[#3b1c0a] mb-3">
-              Get Expo Go for your phone
+              Lumen on the App Store &amp; Play Store
             </h3>
             <p className="text-sm text-[#8c5a3a] mb-6 leading-relaxed">
-              Lumen runs inside Expo Go while we polish the standalone build.
-              Install Expo Go once, and the QR opens Lumen every time.
+              The standalone Lumen app is on its way. Tap a store badge to be
+              taken to its listing the moment it goes live.
             </p>
 
             <div className="flex flex-col gap-3 mt-auto">
               <a
-                href="https://apps.apple.com/app/expo-go/id982107779"
-                target="_blank"
-                rel="noreferrer"
-                className="w-full inline-flex items-center justify-between px-5 py-4 rounded-2xl bg-[#3b1c0a] text-white hover:bg-[#3b1c0a]/90 transition-colors"
+                href="#"
+                aria-disabled="true"
+                onClick={(e) => e.preventDefault()}
+                className="w-full inline-flex items-center justify-between px-5 py-4 rounded-2xl bg-[#3b1c0a] text-white opacity-90 hover:opacity-100 transition-opacity cursor-not-allowed"
               >
                 <span className="flex flex-col text-left">
                   <span className="text-[10px] uppercase tracking-[0.18em] opacity-70">
-                    Download on
+                    Coming soon to
                   </span>
                   <span className="text-base font-medium">App Store</span>
                 </span>
                 <ExternalLink className="w-4 h-4 opacity-70" />
               </a>
               <a
-                href="https://play.google.com/store/apps/details?id=host.exp.exponent"
-                target="_blank"
-                rel="noreferrer"
-                className="w-full inline-flex items-center justify-between px-5 py-4 rounded-2xl bg-[#3b1c0a] text-white hover:bg-[#3b1c0a]/90 transition-colors"
+                href="#"
+                aria-disabled="true"
+                onClick={(e) => e.preventDefault()}
+                className="w-full inline-flex items-center justify-between px-5 py-4 rounded-2xl bg-[#3b1c0a] text-white opacity-90 hover:opacity-100 transition-opacity cursor-not-allowed"
               >
                 <span className="flex flex-col text-left">
                   <span className="text-[10px] uppercase tracking-[0.18em] opacity-70">
-                    Get it on
+                    Coming soon to
                   </span>
                   <span className="text-base font-medium">Google Play</span>
                 </span>
                 <ExternalLink className="w-4 h-4 opacity-70" />
               </a>
+              <p className="text-xs text-[#8c5a3a] mt-2">
+                Want to try Lumen today? Use the live preview on the left.
+              </p>
             </div>
           </div>
         </div>
