@@ -102,9 +102,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [vents, setVents] = useState<VentEntry[]>([]);
   const [logs, setLogs] = useState<Record<string, DailyLog>>({});
 
-  // Session version: bumped on signOut so any stale persist writes started
-  // before signOut are dropped instead of resurrecting cleared data.
+  // Bumped on signOut. Used by the persist effect below to skip any pending
+  // write whose payload was captured before the sign-out cleared state.
   const sessionRef = useRef(0);
+  const lastWrittenSessionRef = useRef(0);
 
   // Hydrate once on mount.
   useEffect(() => {
@@ -135,13 +136,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     const session = sessionRef.current;
+    // If a sign-out has bumped the session since this effect was scheduled,
+    // skip the write so a stale payload can't resurrect cleared data.
+    if (session < lastWrittenSessionRef.current) return;
     const payload: Persisted = { profile, vents, logs };
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload)).catch(() => {
-      // ignore — next change will retry
-    });
-    // If signOut bumped the session, any in-flight write from before is
-    // already moot; the next effect tick will write the cleared payload.
-    void session;
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+      .then(() => {
+        lastWrittenSessionRef.current = session;
+      })
+      .catch(() => {
+        // ignore — next change will retry
+      });
   }, [ready, profile, vents, logs]);
 
   const cycle = useMemo<CycleState | null>(() => {
@@ -182,6 +187,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const signOut: AppContextValue["signOut"] = useCallback(async () => {
     sessionRef.current += 1;
+    lastWrittenSessionRef.current = sessionRef.current;
     setProfile(null);
     setVents([]);
     setLogs({});
