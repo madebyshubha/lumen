@@ -55,11 +55,9 @@ export function applyVibeToTasks(
 
   let next: Task[] = tasks;
 
-  if (directive.hideTaskKinds.length > 0) {
-    const hide = new Set(directive.hideTaskKinds);
-    next = next.filter((t) => !hide.has(t.kind));
-  }
-
+  // Swap before hide: if a mood says "swap movement to rest" AND also hides
+  // movement, the swapped (now kind:rest) tasks survive — that matches the
+  // anxious spec ("muted to a stretch") rather than wiping movement entirely.
   if (directive.swapMovementToRest) {
     next = next.map((t) => {
       if (t.kind !== "movement") return t;
@@ -72,6 +70,11 @@ export function applyVibeToTasks(
         scaledNote: `Softened from "${t.title}" because of how you're feeling.`,
       };
     });
+  }
+
+  if (directive.hideTaskKinds.length > 0) {
+    const hide = new Set(directive.hideTaskKinds);
+    next = next.filter((t) => !hide.has(t.kind));
   }
 
   if (directive.injectedTask) {
