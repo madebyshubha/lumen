@@ -11,12 +11,6 @@ export function StreakChip() {
   const [open, setOpen] = useState(false);
 
   const flameColor = streak.current > 0 ? palette.primary : palette.textMuted;
-  const subtitle =
-    streak.current === 0
-      ? "Start a fresh streak today"
-      : streak.loggedToday
-        ? `Best ${streak.best} ${streak.best === 1 ? "day" : "days"}`
-        : `Keep it alive — log one thing today`;
 
   return (
     <GlassCard padding={14} style={{ marginBottom: 16 }}>
@@ -29,16 +23,28 @@ export function StreakChip() {
         <View style={[styles.iconWrap, { backgroundColor: palette.primarySoft }]}>
           <Feather name="zap" size={16} color={flameColor} />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.titleRow}>
             <Text style={[styles.value, { color: palette.text }]}>
               {streak.current}
             </Text>
-            <Text style={[styles.unit, { color: palette.textMuted }]}>
-              {streak.current === 1 ? "day streak" : "day streak"}
-            </Text>
+            <Text style={[styles.unit, { color: palette.textMuted }]}>day streak</Text>
           </View>
-          <Text style={[styles.sub, { color: palette.textMuted }]}>{subtitle}</Text>
+          <Text style={[styles.sub, { color: palette.textMuted }]} numberOfLines={1}>
+            {streak.current > 0
+              ? "Logging anything keeps it alive"
+              : "Log one thing to start a fresh streak"}
+          </Text>
+        </View>
+        {/* "Best" is always visible so the user can see her record at a glance. */}
+        <View
+          style={[
+            styles.bestPill,
+            { backgroundColor: palette.surfaceMuted, borderColor: palette.glassBorder },
+          ]}
+        >
+          <Text style={[styles.bestLabel, { color: palette.textMuted }]}>Best</Text>
+          <Text style={[styles.bestValue, { color: palette.text }]}>{streak.best}</Text>
         </View>
         <Feather
           name={open ? "chevron-up" : "chevron-down"}
@@ -47,7 +53,8 @@ export function StreakChip() {
         />
       </Pressable>
 
-      {!streak.loggedToday && streak.current > 0 ? (
+      {/* Nudge: shown on every day that hasn't been logged yet, regardless of current streak. */}
+      {!streak.loggedToday ? (
         <View
           style={[
             styles.nudge,
@@ -56,7 +63,7 @@ export function StreakChip() {
         >
           <Feather name="alert-circle" size={12} color={palette.primary} />
           <Text style={[styles.nudgeText, { color: palette.text }]} numberOfLines={2}>
-            Log one thing to keep your streak alive.
+            Log one thing to keep your streak.
           </Text>
         </View>
       ) : null}
@@ -87,12 +94,28 @@ export function StreakChip() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconWrap: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   titleRow: { flexDirection: "row", alignItems: "baseline", gap: 6 },
   value: { fontSize: 22, fontFamily: "Outfit_700Bold" },
   unit: { fontSize: 12, fontFamily: "Inter_500Medium" },
   sub: { fontSize: 11.5, fontFamily: "Inter_400Regular", marginTop: 2 },
+  bestPill: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  bestLabel: {
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    fontFamily: "Inter_500Medium",
+  },
+  bestValue: { fontSize: 13, fontFamily: "Inter_700Bold" },
   nudge: {
     marginTop: 12,
     flexDirection: "row",

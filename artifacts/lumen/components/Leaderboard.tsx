@@ -160,13 +160,14 @@ function Row({
         style={({ pressed }) => [
           styles.kudosBtn,
           {
-            borderColor: palette.glassBorder,
-            backgroundColor: highlight ? "transparent" : palette.surface,
+            borderColor: highlight ? palette.glassBorder : palette.primary,
+            backgroundColor: highlight ? "transparent" : palette.primarySoft,
             opacity: highlight ? 0.4 : pressed ? 0.7 : 1,
           },
         ]}
       >
-        <Feather name="heart" size={13} color={palette.primary} />
+        <Feather name="heart" size={12} color={palette.primary} />
+        <Text style={[styles.kudosBtnText, { color: palette.primary }]}>Kudos</Text>
       </Pressable>
     </View>
   );
@@ -198,13 +199,15 @@ const styles = StyleSheet.create({
   },
   streakNum: { fontSize: 13, fontFamily: "Inter_700Bold" },
   kudosBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
   },
+  kudosBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   divider: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 6 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
   dividerText: {
