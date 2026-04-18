@@ -1,0 +1,33 @@
+kind = "web"
+previewPath = "/lumen-landing/"
+title = "Lumen Landing"
+version = "1.0.0"
+id = "artifacts/lumen-landing"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/lumen-landing/" ]
+localPort = 19748
+
+[services.development]
+run = "pnpm --filter @workspace/lumen-landing run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lumen-landing", "run", "build" ]
+publicDir = "artifacts/lumen-landing/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19748"
+BASE_PATH = "/lumen-landing/"
+VITE_REPLIT_EXPO_DEV_DOMAIN = "$REPLIT_EXPO_DEV_DOMAIN"
+VITE_REPLIT_DEV_DOMAIN = "$REPLIT_DEV_DOMAIN"
