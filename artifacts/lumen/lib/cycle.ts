@@ -26,11 +26,18 @@ export function addDays(d: Date, n: number): Date {
 }
 
 export function phaseForDay(day: number, cycleLength = 28): CyclePhase {
+  // Required model (28-day cycle):
+  //   menstrual:  days 1–5
+  //   follicular: days 6–13
+  //   ovulatory:  day 14 only
+  //   luteal:     days 15–28
+  // For non-28 cycles we keep the same proportions: scale ovulation to the
+  // mid-point of the cycle and place a single-day ovulatory window there.
   const d = ((day - 1) % cycleLength) + 1;
-  const ovulationDay = Math.round(cycleLength / 2);
+  const ovulationDay = Math.round((cycleLength / 28) * 14);
   if (d <= 5) return "menstrual";
-  if (d < ovulationDay - 1) return "follicular";
-  if (d <= ovulationDay + 1) return "ovulatory";
+  if (d < ovulationDay) return "follicular";
+  if (d === ovulationDay) return "ovulatory";
   return "luteal";
 }
 

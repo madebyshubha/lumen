@@ -18,6 +18,7 @@ import {
   type MockHealth,
 } from "@/lib/cycle";
 import type { HabitTag, SymptomTag } from "@/lib/symptoms";
+import { tasksForPhase } from "@/lib/tasks";
 
 const STORAGE_KEY = "lumen.state.v1";
 
@@ -206,15 +207,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     async (entry) => {
       const v: VentEntry = { ...entry, id: newId(), createdAt: new Date().toISOString() };
       setVents((prev) => [v, ...prev].slice(0, 100));
+
+      // Map detected habits to today's task ids so saying "I drank water"
+      // also checks off the matching task on the dashboard.
+      const phaseTasks = tasksForPhase(entry.phase, health?.todayHrvLow ?? false);
+      const newlyCompleted = phaseTasks
+        .filter((t) => t.habit && entry.habits.includes(t.habit))
+        .map((t) => t.id);
+
       upsertTodayLog((log) => {
         const habits = Array.from(new Set([...log.completedHabits, ...entry.habits]));
+        const completedTaskIds = Array.from(
+          new Set([...log.completedTaskIds, ...newlyCompleted]),
+        );
         const waterCups = entry.habits.includes("water")
           ? Math.min(12, log.waterCups + 1)
           : log.waterCups;
-        return { ...log, completedHabits: habits, waterCups };
+        return { ...log, completedHabits: habits, completedTaskIds, waterCups };
       });
     },
-    [upsertTodayLog],
+    [upsertTodayLog, health],
   );
 
   const setMood: AppContextValue["setMood"] = useCallback(
