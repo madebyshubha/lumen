@@ -21,4 +21,5 @@ export * from "./ventAnalysisFollowUp";
 export * from "./vibeDirective";
 export * from "./vibeInjectedTask";
 export * from "./vibeMood";
+export * from "./vibePaletteIntensity";
 export * from "./vibeTaskKind";

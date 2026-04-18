@@ -153,48 +153,91 @@ export const InterpretVibeBody = zod.object({
 
 export const interpretVibeResponseIntensityMax = 3;
 
-export const InterpretVibeResponse = zod.object({
-  mood: zod.enum(["low", "anxious", "vibrant", "steady"]),
-  intensity: zod
-    .number()
-    .min(1)
-    .max(interpretVibeResponseIntensityMax)
-    .describe("How strongly to apply (1 mild, 3 strong)."),
-  headline: zod
-    .string()
-    .describe("Short warm sentence shown above the home (max ~18 words)."),
-  pillLabel: zod
-    .string()
-    .describe('Tiny label for the \"Tuned for …\" pill (max ~6 words).'),
-  missionTitle: zod
-    .string()
-    .describe("Section header for the mission section."),
-  missionSub: zod
-    .string()
-    .describe("Section sub-copy for the mission section."),
-  streakNote: zod
-    .string()
-    .nullable()
-    .describe("Optional sub-line for the streak chip (e.g. for low mood)."),
-  injectedTask: zod
-    .object({
-      title: zod.string(),
-      detail: zod.string(),
-      why: zod.string(),
-      kind: zod.enum([
-        "rest",
-        "hydration",
-        "movement",
-        "food",
-        "social",
-        "mindset",
-        "supplement",
-      ]),
-    })
-    .nullable(),
-  expiresAt: zod.coerce
-    .date()
-    .describe(
-      "When the directive should auto-clear and the home returns to baseline.",
-    ),
-});
+export const interpretVibeResponseSimplifyLevelMin = 0;
+export const interpretVibeResponseSimplifyLevelMax = 3;
+
+export const InterpretVibeResponse = zod
+  .object({
+    mood: zod.enum(["low", "anxious", "vibrant", "steady"]),
+    intensity: zod
+      .number()
+      .min(1)
+      .max(interpretVibeResponseIntensityMax)
+      .describe("How strongly to apply (1 mild, 3 strong)."),
+    headline: zod
+      .string()
+      .describe("Short warm sentence shown above the home (max ~18 words)."),
+    explanation: zod
+      .string()
+      .describe(
+        "One short sentence explaining why we changed the home, plain language.",
+      ),
+    pillLabel: zod
+      .string()
+      .describe('Tiny label for the \"Tuned for …\" pill (max ~6 words).'),
+    missionTitle: zod
+      .string()
+      .describe("Section header for the mission section."),
+    missionSub: zod
+      .string()
+      .describe("Section sub-copy for the mission section."),
+    streakNote: zod
+      .string()
+      .nullable()
+      .describe("Optional sub-line for the streak chip (e.g. for low mood)."),
+    injectedTask: zod
+      .object({
+        title: zod.string(),
+        detail: zod.string(),
+        why: zod.string(),
+        kind: zod.enum([
+          "rest",
+          "hydration",
+          "movement",
+          "food",
+          "social",
+          "mindset",
+          "supplement",
+        ]),
+      })
+      .nullable(),
+    simplifyLevel: zod
+      .number()
+      .min(interpretVibeResponseSimplifyLevelMin)
+      .max(interpretVibeResponseSimplifyLevelMax)
+      .describe(
+        "How aggressively to strip away non-essentials. 0 = full home, 1 = hide bonus\nsections, 2 = mission only + minimum, 3 = rest mode.\n",
+      ),
+    hideTaskKinds: zod
+      .array(
+        zod.enum([
+          "rest",
+          "hydration",
+          "movement",
+          "food",
+          "social",
+          "mindset",
+          "supplement",
+        ]),
+      )
+      .describe("Task kinds to drop entirely from the home today."),
+    swapMovementToRest: zod
+      .boolean()
+      .describe(
+        "If true, replace any remaining movement task with a restorative stretch.",
+      ),
+    promoteLean: zod
+      .boolean()
+      .describe(
+        "If true, render the Lean-in section above the mission section.",
+      ),
+    paletteIntensity: zod.enum(["soft", "normal", "punchy"]),
+    expiresAt: zod.coerce
+      .date()
+      .describe(
+        "When the directive should auto-clear and the home returns to baseline.",
+      ),
+  })
+  .describe(
+    "Full server-driven directive for reshaping the home screen. The\nserver controls every layout decision so the client renders this\nverbatim — it does not re-derive layout from mood alone.\n",
+  );

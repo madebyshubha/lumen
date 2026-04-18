@@ -279,8 +279,15 @@ components:
         - detail
         - why
         - kind
+    VibePaletteIntensity:
+      type: string
+      enum: [soft, normal, punchy]
     VibeDirective:
       type: object
+      description: |
+        Full server-driven directive for reshaping the home screen. The
+        server controls every layout decision so the client renders this
+        verbatim — it does not re-derive layout from mood alone.
       properties:
         mood:
           $ref: "#/components/schemas/VibeMood"
@@ -292,6 +299,9 @@ components:
         headline:
           type: string
           description: Short warm sentence shown above the home (max ~18 words).
+        explanation:
+          type: string
+          description: One short sentence explaining why we changed the home, plain language.
         pillLabel:
           type: string
           description: Tiny label for the "Tuned for …" pill (max ~6 words).
@@ -309,6 +319,26 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/VibeInjectedTask"
+        simplifyLevel:
+          type: integer
+          minimum: 0
+          maximum: 3
+          description: |
+            How aggressively to strip away non-essentials. 0 = full home, 1 = hide bonus
+            sections, 2 = mission only + minimum, 3 = rest mode.
+        hideTaskKinds:
+          type: array
+          items:
+            $ref: "#/components/schemas/VibeTaskKind"
+          description: Task kinds to drop entirely from the home today.
+        swapMovementToRest:
+          type: boolean
+          description: If true, replace any remaining movement task with a restorative stretch.
+        promoteLean:
+          type: boolean
+          description: If true, render the Lean-in section above the mission section.
+        paletteIntensity:
+          $ref: "#/components/schemas/VibePaletteIntensity"
         expiresAt:
           type: string
           format: date-time
@@ -317,11 +347,17 @@ components:
         - mood
         - intensity
         - headline
+        - explanation
         - pillLabel
         - missionTitle
         - missionSub
         - streakNote
         - injectedTask
+        - simplifyLevel
+        - hideTaskKinds
+        - swapMovementToRest
+        - promoteLean
+        - paletteIntensity
         - expiresAt
     VentAnalysisError:
       type: object

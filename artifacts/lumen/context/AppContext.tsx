@@ -30,7 +30,7 @@ import {
 } from "@/lib/lifestyle";
 import type { HabitTag, SymptomTag } from "@/lib/symptoms";
 import { generateDailyTasks, type Task } from "@/lib/tasks";
-import { runVibeInterpret, type VibeResult } from "@/lib/vibe";
+import { offlineDirectiveForSentence, runVibeInterpret, type VibeResult } from "@/lib/vibe";
 import { applyVibeToTasks } from "@/lib/vibeFilter";
 
 const STORAGE_KEY = "lumen.state.v1";
@@ -561,6 +561,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // request is in flight, signOut() bumps sessionRef and we drop the late
       // response on the floor — no leaked vibe text written back to storage.
       const session = sessionRef.current;
+      // Optimistic morph: classify offline immediately so the home reshapes
+      // in <100ms. The network result then upgrades it in place (or is
+      // dropped if the user signed out / cleared in the meantime).
+      const optimistic = offlineDirectiveForSentence(trimmed);
+      setVibe(optimistic);
       setVibeLoading(true);
       try {
         const result = await runVibeInterpret({

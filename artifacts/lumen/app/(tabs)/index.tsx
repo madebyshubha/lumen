@@ -17,7 +17,7 @@ import { StreakChip } from "@/components/StreakChip";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
 import { concernLabel } from "@/lib/protocols";
-import { layoutForMood, DEFAULT_LAYOUT } from "@/lib/vibeFilter";
+import { layoutForDirective, DEFAULT_LAYOUT } from "@/lib/vibeFilter";
 
 export default function DashboardScreen() {
   const palette = usePalette();
@@ -29,13 +29,10 @@ export default function DashboardScreen() {
   const lean = tasks.filter((t) => t.priority === "important");
   const gentle = tasks.filter((t) => t.priority === "gentle");
 
-  // The whole home screen reshapes around the active vibe directive.
-  const layout = vibe
-    ? layoutForMood(
-        vibe.mood,
-        Math.max(1, Math.min(3, Math.round(vibe.intensity))) as 1 | 2 | 3,
-      )
-    : DEFAULT_LAYOUT;
+  // The whole home screen reshapes around the active vibe directive — every
+  // layout decision (which sections, palette intensity, whether to promote
+  // Lean-in) comes straight from the server-issued directive.
+  const layout = vibe ? layoutForDirective(vibe) : DEFAULT_LAYOUT;
   const missionTitle = vibe?.missionTitle ?? "Today's mission";
   const missionSub = vibe?.missionSub ?? "The non-negotiables";
   const showLean = layout.showLean && lean.length > 0;

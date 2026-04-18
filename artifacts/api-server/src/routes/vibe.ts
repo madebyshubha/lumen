@@ -7,6 +7,7 @@ import {
   type VibeMood,
   type VibeTaskKind,
   type VibeInjectedTask,
+  type VibePaletteIntensity,
   type VentAnalysisError,
 } from "@workspace/api-zod";
 
@@ -27,6 +28,8 @@ const KINDS: VibeTaskKind[] = [
 
 const VIBE_TTL_HOURS = 6;
 
+const PALETTES: VibePaletteIntensity[] = ["soft", "normal", "punchy"];
+
 const RESPONSE_SCHEMA = {
   name: "vibe_directive",
   strict: true,
@@ -40,6 +43,11 @@ const RESPONSE_SCHEMA = {
         type: "string",
         description:
           "One short, warm sentence (max ~18 words) acknowledging how she feels and what we are tuning the home for. Plain language, no emojis, no 'I'm sorry'.",
+      },
+      explanation: {
+        type: "string",
+        description:
+          "One short sentence (max ~18 words) explaining in plain language why we're reshaping the home this way (e.g. 'Hiding bonus tasks so today feels manageable.').",
       },
       pillLabel: {
         type: "string",
@@ -74,16 +82,51 @@ const RESPONSE_SCHEMA = {
         description:
           "Optional micro-task to prepend at the very top of the mission. For 'anxious' return a 2-minute breathing card (kind: mindset). For 'low' return a tiny rest action (kind: rest). For 'vibrant' return an extra stretch goal (kind: movement). For 'steady' return null.",
       },
+      simplifyLevel: {
+        type: "integer",
+        minimum: 0,
+        maximum: 3,
+        description:
+          "How aggressively to strip the home: 0 full home, 1 hide bonus sections, 2 mission-only, 3 rest mode. Low mood -> 2 or 3, anxious -> 1 or 2, vibrant -> 0, steady -> 0.",
+      },
+      hideTaskKinds: {
+        type: "array",
+        items: { type: "string", enum: KINDS },
+        description:
+          "Task kinds to drop entirely. Low mood: include 'movement' and 'social'. Anxious: include 'movement'. Vibrant/steady: empty array.",
+      },
+      swapMovementToRest: {
+        type: "boolean",
+        description:
+          "If true, replace any remaining movement task with a restorative stretch. True for low and most anxious states.",
+      },
+      promoteLean: {
+        type: "boolean",
+        description:
+          "If true, render the Lean-in section above the mission section. True for vibrant only.",
+      },
+      paletteIntensity: {
+        type: "string",
+        enum: PALETTES,
+        description:
+          "Background visual intensity. 'soft' for low/anxious, 'punchy' for vibrant, 'normal' for steady.",
+      },
     },
     required: [
       "mood",
       "intensity",
       "headline",
+      "explanation",
       "pillLabel",
       "missionTitle",
       "missionSub",
       "streakNote",
       "injectedTask",
+      "simplifyLevel",
+      "hideTaskKinds",
+      "swapMovementToRest",
+      "promoteLean",
+      "paletteIntensity",
     ],
   },
 } as const;
@@ -181,22 +224,38 @@ router.post("/vibe/interpret", async (req, res) => {
       mood: VibeMood;
       intensity: number;
       headline: string;
+      explanation: string;
       pillLabel: string;
       missionTitle: string;
       missionSub: string;
       streakNote: string | null;
       injectedTask: VibeInjectedTask | null;
+      simplifyLevel: number;
+      hideTaskKinds: VibeTaskKind[];
+      swapMovementToRest: boolean;
+      promoteLean: boolean;
+      paletteIntensity: VibePaletteIntensity;
     };
 
-    // Belt-and-braces — keep enums sane and clamp intensity.
+    // Belt-and-braces — keep enums sane and clamp numeric ranges. The schema
+    // is strict but we never want a malformed model output to break the home.
     const mood: VibeMood = MOODS.includes(parsedJson.mood)
       ? parsedJson.mood
       : "steady";
     const intensity = Math.max(1, Math.min(3, Math.round(parsedJson.intensity || 1))) as 1 | 2 | 3;
+    const simplifyLevel = Math.max(0, Math.min(3, Math.round(parsedJson.simplifyLevel || 0)));
     const injectedTask =
       parsedJson.injectedTask && KINDS.includes(parsedJson.injectedTask.kind)
         ? parsedJson.injectedTask
         : null;
+    const hideTaskKinds = (parsedJson.hideTaskKinds ?? []).filter((k): k is VibeTaskKind =>
+      KINDS.includes(k),
+    );
+    const paletteIntensity: VibePaletteIntensity = PALETTES.includes(
+      parsedJson.paletteIntensity,
+    )
+      ? parsedJson.paletteIntensity
+      : "normal";
 
     const expiresAt = new Date(
       Date.now() + VIBE_TTL_HOURS * 60 * 60 * 1000,
@@ -206,11 +265,17 @@ router.post("/vibe/interpret", async (req, res) => {
       mood,
       intensity,
       headline: parsedJson.headline.trim(),
+      explanation: parsedJson.explanation.trim(),
       pillLabel: parsedJson.pillLabel.trim(),
       missionTitle: parsedJson.missionTitle.trim(),
       missionSub: parsedJson.missionSub.trim(),
       streakNote: parsedJson.streakNote ? parsedJson.streakNote.trim() : null,
       injectedTask,
+      simplifyLevel,
+      hideTaskKinds,
+      swapMovementToRest: Boolean(parsedJson.swapMovementToRest),
+      promoteLean: Boolean(parsedJson.promoteLean),
+      paletteIntensity,
       expiresAt,
     };
 

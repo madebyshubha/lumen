@@ -141,6 +141,21 @@ export interface VibeInjectedTask {
   kind: VibeTaskKind;
 }
 
+export type VibePaletteIntensity =
+  (typeof VibePaletteIntensity)[keyof typeof VibePaletteIntensity];
+
+export const VibePaletteIntensity = {
+  soft: "soft",
+  normal: "normal",
+  punchy: "punchy",
+} as const;
+
+/**
+ * Full server-driven directive for reshaping the home screen. The
+server controls every layout decision so the client renders this
+verbatim — it does not re-derive layout from mood alone.
+
+ */
 export interface VibeDirective {
   mood: VibeMood;
   /**
@@ -151,6 +166,8 @@ export interface VibeDirective {
   intensity: number;
   /** Short warm sentence shown above the home (max ~18 words). */
   headline: string;
+  /** One short sentence explaining why we changed the home, plain language. */
+  explanation: string;
   /** Tiny label for the "Tuned for …" pill (max ~6 words). */
   pillLabel: string;
   /** Section header for the mission section. */
@@ -160,6 +177,21 @@ export interface VibeDirective {
   /** Optional sub-line for the streak chip (e.g. for low mood). */
   streakNote: string | null;
   injectedTask: VibeInjectedTask | null;
+  /**
+   * How aggressively to strip away non-essentials. 0 = full home, 1 = hide bonus
+sections, 2 = mission only + minimum, 3 = rest mode.
+
+   * @minimum 0
+   * @maximum 3
+   */
+  simplifyLevel: number;
+  /** Task kinds to drop entirely from the home today. */
+  hideTaskKinds: VibeTaskKind[];
+  /** If true, replace any remaining movement task with a restorative stretch. */
+  swapMovementToRest: boolean;
+  /** If true, render the Lean-in section above the mission section. */
+  promoteLean: boolean;
+  paletteIntensity: VibePaletteIntensity;
   /** When the directive should auto-clear and the home returns to baseline. */
   expiresAt: string;
 }

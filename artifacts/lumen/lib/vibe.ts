@@ -6,6 +6,8 @@ import {
   type InterpretVibeRequest,
   type VibeDirective,
   type VibeMood,
+  type VibePaletteIntensity,
+  type VibeTaskKind,
 } from "@workspace/api-client-react";
 
 import type { ConcernKey, Diet } from "@/lib/lifestyle";
@@ -25,7 +27,7 @@ export type VibeInput = {
 
 export type VibeResult = VibeDirective & { analyzedOffline: boolean };
 
-const TIMEOUT_MS = 6000;
+const NETWORK_TIMEOUT_MS = 8000; // server target is ≤2s; this is a hard ceiling
 const TTL_HOURS = 6;
 
 let baseUrlConfigured = false;
@@ -41,59 +43,26 @@ function configureBaseUrl(): void {
 }
 
 // ----- Offline keyword classifier -----------------------------------------
+//
+// Used both as the network fallback AND as the immediate optimistic reshape
+// while the server call is in flight, so the home morphs in <100ms.
 
 const LOW = [
-  "low",
-  "drained",
-  "exhausted",
-  "wiped",
-  "tired",
-  "burnt",
-  "burnt out",
-  "burned out",
-  "sad",
-  "depressed",
-  "down",
-  "heavy",
-  "hopeless",
-  "no energy",
-  "nothing left",
-  "can't",
-  "cant",
+  "low", "drained", "exhausted", "wiped", "tired", "burnt",
+  "burnt out", "burned out", "sad", "depressed", "down", "heavy",
+  "hopeless", "no energy", "nothing left", "can't", "cant",
 ];
 
 const ANXIOUS = [
-  "anxious",
-  "anxiety",
-  "panicked",
-  "panic",
-  "racing",
-  "wired",
-  "overwhelmed",
-  "stressed",
-  "scared",
-  "worried",
-  "on edge",
-  "freaking",
-  "spiraling",
+  "anxious", "anxiety", "panicked", "panic", "racing", "wired",
+  "overwhelmed", "stressed", "scared", "worried", "on edge",
+  "freaking", "spiraling",
 ];
 
 const VIBRANT = [
-  "amazing",
-  "great",
-  "awesome",
-  "energetic",
-  "pumped",
-  "alive",
-  "on fire",
-  "buzzing",
-  "powerful",
-  "strong",
-  "ready",
-  "go",
-  "fantastic",
-  "happy",
-  "joyful",
+  "amazing", "great", "awesome", "energetic", "pumped", "alive",
+  "on fire", "buzzing", "powerful", "strong", "ready", "go",
+  "fantastic", "happy", "joyful",
 ];
 
 function matches(s: string, words: string[]): boolean {
@@ -101,84 +70,115 @@ function matches(s: string, words: string[]): boolean {
   return words.some((w) => lower.includes(w));
 }
 
-function classifyOffline(sentence: string): VibeMood {
+function classifyMood(sentence: string): VibeMood {
   if (matches(sentence, LOW)) return "low";
   if (matches(sentence, ANXIOUS)) return "anxious";
   if (matches(sentence, VIBRANT)) return "vibrant";
   return "steady";
 }
 
-function offlineDirective(sentence: string): VibeResult {
-  const mood = classifyOffline(sentence);
-  const expiresAt = new Date(Date.now() + TTL_HOURS * 60 * 60 * 1000).toISOString();
-  if (mood === "low") {
-    return {
-      mood,
-      intensity: 2,
-      headline: "I hear you. Pulling back the day so it actually feels doable.",
-      pillLabel: "Tuned for feeling low",
-      missionTitle: "Just three soft things",
-      missionSub: "Gentle, no pressure",
-      streakNote: "We're holding your streak today — anything counts.",
-      injectedTask: {
-        title: "Lie flat for five minutes",
-        detail: "Phone face-down. Eyes closed. That's the whole task.",
-        why: "When cortisol is high, even a tiny rest break drops it measurably.",
-        kind: "rest",
-      },
-      expiresAt,
-      analyzedOffline: true,
-    };
-  }
-  if (mood === "anxious") {
-    return {
-      mood,
-      intensity: 2,
-      headline: "Let's slow the wheel. One breathing reset, then the basics.",
-      pillLabel: "Tuned for anxious",
-      missionTitle: "Calm reset",
-      missionSub: "Slow the day down",
-      streakNote: null,
-      injectedTask: {
-        title: "Two-minute box breathing",
-        detail: "4-in, 4-hold, 4-out, 4-hold. Repeat for two minutes.",
-        why: "Slow exhales activate the vagus nerve and drop cortisol within minutes.",
-        kind: "mindset",
-      },
-      expiresAt,
-      analyzedOffline: true,
-    };
-  }
-  if (mood === "vibrant") {
-    return {
-      mood,
-      intensity: 2,
-      headline: "Beautiful. Let's actually use this — one stretch goal added.",
-      pillLabel: "Tuned for high energy",
-      missionTitle: "Push today",
-      missionSub: "Energy is a window — use it",
-      streakNote: null,
-      injectedTask: {
-        title: "Add ten minutes of strength",
-        detail: "Tag it onto your workout — squats, push-ups, anything heavy.",
-        why: "PCOS responds to muscle-building windows. Don't waste a high-energy day.",
-        kind: "movement",
-      },
-      expiresAt,
-      analyzedOffline: true,
-    };
-  }
-  return {
-    mood: "steady",
+type OfflineSpec = {
+  intensity: 1 | 2 | 3;
+  headline: string;
+  explanation: string;
+  pillLabel: string;
+  missionTitle: string;
+  missionSub: string;
+  streakNote: string | null;
+  injectedTask: VibeDirective["injectedTask"];
+  simplifyLevel: number;
+  hideTaskKinds: VibeTaskKind[];
+  swapMovementToRest: boolean;
+  promoteLean: boolean;
+  paletteIntensity: VibePaletteIntensity;
+};
+
+const OFFLINE_SPECS: Record<VibeMood, OfflineSpec> = {
+  low: {
+    intensity: 2,
+    headline: "I hear you. Pulling back the day so it actually feels doable.",
+    explanation: "Hiding the bonus sections so today is just three soft things.",
+    pillLabel: "Tuned for feeling low",
+    missionTitle: "Just three soft things",
+    missionSub: "Gentle, no pressure",
+    streakNote: "We're holding your streak today — anything counts.",
+    injectedTask: {
+      title: "Lie flat for five minutes",
+      detail: "Phone face-down. Eyes closed. That's the whole task.",
+      why: "When cortisol is high, even a tiny rest break drops it measurably.",
+      kind: "rest",
+    },
+    simplifyLevel: 2,
+    hideTaskKinds: ["movement", "social"],
+    swapMovementToRest: true,
+    promoteLean: false,
+    paletteIntensity: "soft",
+  },
+  anxious: {
+    intensity: 2,
+    headline: "Let's slow the wheel. One breathing reset, then the basics.",
+    explanation: "Quieting the page and leading with a breathing reset.",
+    pillLabel: "Tuned for anxious",
+    missionTitle: "Calm reset",
+    missionSub: "Slow the day down",
+    streakNote: null,
+    injectedTask: {
+      title: "Two-minute box breathing",
+      detail: "4-in, 4-hold, 4-out, 4-hold. Repeat for two minutes.",
+      why: "Slow exhales activate the vagus nerve and drop cortisol within minutes.",
+      kind: "mindset",
+    },
+    simplifyLevel: 1,
+    hideTaskKinds: ["movement"],
+    swapMovementToRest: true,
+    promoteLean: false,
+    paletteIntensity: "soft",
+  },
+  vibrant: {
+    intensity: 2,
+    headline: "Beautiful. Let's actually use this — one stretch goal added.",
+    explanation: "Promoting your phase-tuned tasks so this energy lands somewhere.",
+    pillLabel: "Tuned for high energy",
+    missionTitle: "Push today",
+    missionSub: "Energy is a window — use it",
+    streakNote: null,
+    injectedTask: {
+      title: "Add ten minutes of strength",
+      detail: "Tag it onto your workout — squats, push-ups, anything heavy.",
+      why: "PCOS responds to muscle-building windows. Don't waste a high-energy day.",
+      kind: "movement",
+    },
+    simplifyLevel: 0,
+    hideTaskKinds: [],
+    swapMovementToRest: false,
+    promoteLean: true,
+    paletteIntensity: "punchy",
+  },
+  steady: {
     intensity: 1,
     headline: "Steady is good. Keeping the home as-is.",
+    explanation: "Nothing to change today.",
     pillLabel: "Tuned for steady",
     missionTitle: "Today's mission",
     missionSub: "The non-negotiables",
     streakNote: null,
     injectedTask: null,
-    expiresAt,
+    simplifyLevel: 0,
+    hideTaskKinds: [],
+    swapMovementToRest: false,
+    promoteLean: false,
+    paletteIntensity: "normal",
+  },
+};
+
+export function offlineDirectiveForSentence(sentence: string): VibeResult {
+  const mood = classifyMood(sentence);
+  const spec = OFFLINE_SPECS[mood];
+  return {
+    mood,
+    expiresAt: new Date(Date.now() + TTL_HOURS * 60 * 60 * 1000).toISOString(),
     analyzedOffline: true,
+    ...spec,
   };
 }
 
@@ -220,9 +220,12 @@ export async function runVibeInterpret(input: VibeInput): Promise<VibeResult> {
   };
 
   try {
-    const result = (await withTimeout(interpretVibe(body), TIMEOUT_MS)) as VibeDirective;
+    const result = (await withTimeout(
+      interpretVibe(body),
+      NETWORK_TIMEOUT_MS,
+    )) as VibeDirective;
     return { ...result, analyzedOffline: false };
   } catch {
-    return offlineDirective(input.sentence);
+    return offlineDirectiveForSentence(input.sentence);
   }
 }
