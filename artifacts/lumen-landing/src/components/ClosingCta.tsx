@@ -1,17 +1,22 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Check } from "lucide-react";
+import { Mail, Check, Loader2 } from "lucide-react";
+
+type SubmitState = "idle" | "loading" | "success";
 
 export function ClosingCta() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [state, setState] = useState<SubmitState>("idle");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    setSubmitted(true);
-    setEmail("");
-    setTimeout(() => setSubmitted(false), 3500);
+    if (!email || state !== "idle") return;
+    setState("loading");
+    setTimeout(() => {
+      setState("success");
+      setEmail("");
+      setTimeout(() => setState("idle"), 3500);
+    }, 700);
   };
 
   return (
@@ -67,9 +72,14 @@ export function ClosingCta() {
             </div>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#d97639] text-white text-sm font-medium hover:bg-[#c66628] transition-colors inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#3b1c0a]"
+              disabled={state !== "idle"}
+              className="min-h-[44px] px-6 rounded-full bg-[#d97639] text-white text-sm font-medium hover:bg-[#c66628] disabled:opacity-80 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#3b1c0a]"
             >
-              {submitted ? (
+              {state === "loading" ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Sending…
+                </>
+              ) : state === "success" ? (
                 <>
                   <Check className="w-4 h-4" /> You're on the list
                 </>
