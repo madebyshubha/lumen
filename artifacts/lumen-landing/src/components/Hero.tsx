@@ -22,6 +22,12 @@ export function Hero() {
           transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-3xl"
         >
+          <div className="inline-flex items-center gap-2 mb-7 px-4 py-1.5 rounded-full bg-white/60 backdrop-blur-md border border-white/60">
+            <span className="w-2 h-2 rounded-full bg-[#d97639]" />
+            <span className="font-display text-sm font-medium tracking-tight text-[#3b1c0a]">
+              Lumen
+            </span>
+          </div>
           <h1 className="text-5xl md:text-7xl font-display font-medium tracking-tight text-[#3b1c0a] leading-[1.1] mb-6">
             A human-first companion for PCOS / PCOD.
           </h1>
