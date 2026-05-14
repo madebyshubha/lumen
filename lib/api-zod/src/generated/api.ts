@@ -8,6 +8,153 @@
 import * as zod from "zod";
 
 /**
+ * @summary Exchange a verified Apple identity token for a Lumen session
+ */
+export const signInWithAppleBodyIdentityTokenMin = 16;
+
+export const SignInWithAppleBody = zod.object({
+  identityToken: zod.string().min(signInWithAppleBodyIdentityTokenMin),
+  fullName: zod.string().nullish(),
+  email: zod.string().nullish(),
+});
+
+export const SignInWithAppleResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    provider: zod.enum(["apple", "google", "dev"]),
+    email: zod.string().nullable(),
+    name: zod.string().nullable(),
+    diet: zod.string().nullable(),
+    homeCountry: zod.string().nullable(),
+    energy: zod.number().nullable(),
+    lastPeriodIso: zod.string().nullable(),
+    cycleLength: zod.number().nullable(),
+    onboardedAt: zod.coerce.date().nullable(),
+  }),
+});
+
+/**
+ * @summary Exchange a verified Google ID token for a Lumen session
+ */
+export const signInWithGoogleBodyIdTokenMin = 16;
+
+export const SignInWithGoogleBody = zod.object({
+  idToken: zod.string().min(signInWithGoogleBodyIdTokenMin),
+});
+
+export const SignInWithGoogleResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    provider: zod.enum(["apple", "google", "dev"]),
+    email: zod.string().nullable(),
+    name: zod.string().nullable(),
+    diet: zod.string().nullable(),
+    homeCountry: zod.string().nullable(),
+    energy: zod.number().nullable(),
+    lastPeriodIso: zod.string().nullable(),
+    cycleLength: zod.number().nullable(),
+    onboardedAt: zod.coerce.date().nullable(),
+  }),
+});
+
+/**
+ * @summary Development-only sign-in for the Replit web preview where native
+Apple/Google flows are unavailable. Disabled in production.
+
+ */
+export const signInDevBodyHandleMax = 64;
+
+export const SignInDevBody = zod.object({
+  handle: zod.string().min(1).max(signInDevBodyHandleMax),
+});
+
+export const SignInDevResponse = zod.object({
+  token: zod.string(),
+  user: zod.object({
+    id: zod.number(),
+    provider: zod.enum(["apple", "google", "dev"]),
+    email: zod.string().nullable(),
+    name: zod.string().nullable(),
+    diet: zod.string().nullable(),
+    homeCountry: zod.string().nullable(),
+    energy: zod.number().nullable(),
+    lastPeriodIso: zod.string().nullable(),
+    cycleLength: zod.number().nullable(),
+    onboardedAt: zod.coerce.date().nullable(),
+  }),
+});
+
+/**
+ * @summary Return the current user
+ */
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  provider: zod.enum(["apple", "google", "dev"]),
+  email: zod.string().nullable(),
+  name: zod.string().nullable(),
+  diet: zod.string().nullable(),
+  homeCountry: zod.string().nullable(),
+  energy: zod.number().nullable(),
+  lastPeriodIso: zod.string().nullable(),
+  cycleLength: zod.number().nullable(),
+  onboardedAt: zod.coerce.date().nullable(),
+});
+
+/**
+ * @summary Persist onboarding interview answers onto the user record
+ */
+export const updateProfileBodyNameMax = 80;
+
+export const updateProfileBodyDietMax = 40;
+
+export const updateProfileBodyHomeCountryMax = 8;
+
+export const updateProfileBodyEnergyMax = 10;
+
+export const updateProfileBodyLastPeriodIsoMin = 8;
+export const updateProfileBodyLastPeriodIsoMax = 40;
+
+export const updateProfileBodyCycleLengthMin = 14;
+export const updateProfileBodyCycleLengthMax = 60;
+
+export const UpdateProfileBody = zod.object({
+  name: zod.string().min(1).max(updateProfileBodyNameMax).optional(),
+  diet: zod.string().min(1).max(updateProfileBodyDietMax).optional(),
+  homeCountry: zod
+    .string()
+    .min(1)
+    .max(updateProfileBodyHomeCountryMax)
+    .optional(),
+  energy: zod.number().min(1).max(updateProfileBodyEnergyMax).optional(),
+  lastPeriodIso: zod
+    .string()
+    .min(updateProfileBodyLastPeriodIsoMin)
+    .max(updateProfileBodyLastPeriodIsoMax)
+    .optional(),
+  cycleLength: zod
+    .number()
+    .min(updateProfileBodyCycleLengthMin)
+    .max(updateProfileBodyCycleLengthMax)
+    .optional(),
+  onboarded: zod.boolean().optional(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  id: zod.number(),
+  provider: zod.enum(["apple", "google", "dev"]),
+  email: zod.string().nullable(),
+  name: zod.string().nullable(),
+  diet: zod.string().nullable(),
+  homeCountry: zod.string().nullable(),
+  energy: zod.number().nullable(),
+  lastPeriodIso: zod.string().nullable(),
+  cycleLength: zod.number().nullable(),
+  onboardedAt: zod.coerce.date().nullable(),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

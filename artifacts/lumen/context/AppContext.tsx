@@ -37,6 +37,14 @@ import {
   effectiveDirective,
   type ProactiveBrief,
 } from "@/lib/proactive";
+import {
+  bootstrapAuth,
+  fetchMe,
+  signOutServer,
+  updateProfile as updateServerProfile,
+  clearSession,
+} from "@/lib/auth";
+import type { UserProfile } from "@workspace/api-client-react";
 
 const STORAGE_KEY = "lumen.state.v1";
 
@@ -128,6 +136,7 @@ type AppContextValue = {
     diet: Diet;
     homeCountry: CountryCode;
   }) => Promise<void>;
+  hydrateFromServerProfile: (user: UserProfile) => Promise<void>;
   signOut: () => Promise<void>;
   addVent: (entry: Omit<VentEntry, "id" | "createdAt">) => Promise<string>;
   updateVent: (id: string, partial: Partial<VentEntry>) => Promise<void>;
@@ -188,6 +197,26 @@ function newId(): string {
   return Date.now().toString() + Math.random().toString(36).slice(2, 9);
 }
 
+function buildProfileFromServer(user: UserProfile): Profile {
+  // Fall back to the same demo defaults the onboarding flow would have
+  // written for any field the server doesn't yet have — keeps a returning
+  // user on a working home screen even if their record is partial.
+  const defaultPeriod = new Date();
+  defaultPeriod.setDate(defaultPeriod.getDate() - 18);
+  return {
+    name: user.name ?? "friend",
+    provider: user.provider === "google" ? "google" : "apple",
+    energy: user.energy ?? 6,
+    diet: ((user.diet as Diet | null) ?? "vegetarian") as Diet,
+    homeCountry: ((user.homeCountry as CountryCode | null) ?? "IN") as CountryCode,
+    lastPeriodISO: user.lastPeriodIso ?? defaultPeriod.toISOString(),
+    cycleLength: user.cycleLength ?? 28,
+    createdAt: user.onboardedAt
+      ? new Date(user.onboardedAt).toISOString()
+      : new Date().toISOString(),
+  };
+}
+
 // Migrate older logs that didn't carry context/meals.
 function hydrateLog(raw: Partial<DailyLog> & { date: string }): DailyLog {
   const base = emptyLog();
@@ -227,6 +256,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Wire up the API client (base URL + bearer token) and load any
+      // persisted session token before we read local app state. If there is
+      // a token we also reach for /auth/me to pick up server-side profile
+      // fields (in case the user reinstalled and lost local AsyncStorage).
+      let serverUser: UserProfile | null = null;
+      try {
+        const token = await bootstrapAuth();
+        if (token) {
+          serverUser = await fetchMe();
+        }
+      } catch {
+        // Network failure — fall back to local state only.
+      }
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw && !cancelled) {
@@ -251,7 +293,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // ignore — start fresh
       } finally {
-        if (!cancelled) setReady(true);
+        if (!cancelled) {
+          // If we have a fully-onboarded server profile but no local profile,
+          // hydrate from the server response so a re-installed device or a
+          // fresh web preview still feels signed-in.
+          if (serverUser && serverUser.onboardedAt) {
+            setProfile((current) => current ?? buildProfileFromServer(serverUser!));
+          }
+          setReady(true);
+        }
       }
     })();
     return () => {
@@ -431,19 +481,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // headline Phase-Fluid Logic state — a Holding Pattern instead of a
       // luteal countdown.
       lastPeriod.setDate(lastPeriod.getDate() - 18);
+      const lastPeriodISO = lastPeriod.toISOString();
+
+      // Persist interview answers to the server. We do this before the
+      // local setProfile so a network failure surfaces as a thrown error
+      // (caught by the onboarding screen) instead of leaving the device in
+      // a half-signed-in state.
+      await updateServerProfile({
+        name,
+        diet,
+        homeCountry,
+        energy,
+        lastPeriodIso: lastPeriodISO,
+        cycleLength: 28,
+        onboarded: true,
+      });
+
       setProfile({
         name,
         provider,
         energy,
         diet,
         homeCountry,
-        lastPeriodISO: lastPeriod.toISOString(),
+        lastPeriodISO,
         cycleLength: 28,
         createdAt: new Date().toISOString(),
       });
     },
     [],
   );
+
+  const hydrateFromServerProfile: AppContextValue["hydrateFromServerProfile"] =
+    useCallback(async (user) => {
+      setProfile(buildProfileFromServer(user));
+    }, []);
 
   const signOut: AppContextValue["signOut"] = useCallback(async () => {
     sessionRef.current += 1;
@@ -456,6 +527,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.removeItem(STORAGE_KEY);
     } catch {
       // ignore
+    }
+    // Bump the session version on the server (best-effort) and wipe the
+    // bearer token from SecureStore so subsequent API calls go anonymous.
+    try {
+      await signOutServer();
+    } catch {
+      // Network failure — at minimum clear the local token so the app
+      // doesn't keep sending a stale bearer.
+      await clearSession();
     }
   }, []);
 
@@ -737,6 +817,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       dismissMorningBrief,
       activeDirective,
       completeOnboarding,
+      hydrateFromServerProfile,
       signOut,
       addVent,
       updateVent,
@@ -758,7 +839,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
       vibe, vibeLoading, applyVibe, clearVibe,
-      completeOnboarding, signOut, addVent, updateVent, setMood, toggleTask,
+      completeOnboarding, hydrateFromServerProfile, signOut, addVent, updateVent, setMood, toggleTask,
       addWater, setWater, addSleep, setSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
       setManualEnergy, setManualActivity,

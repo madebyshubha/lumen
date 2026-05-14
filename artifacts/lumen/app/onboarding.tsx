@@ -2,8 +2,10 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +28,13 @@ import {
   type CountryCode,
   type Diet,
 } from "@/lib/lifestyle";
+import {
+  isAppleAvailable,
+  isGoogleAvailable,
+  signInWithApple,
+  signInWithGoogle,
+  signInDev,
+} from "@/lib/auth";
 
 type Step =
   | "login"
@@ -47,18 +56,31 @@ const DIET_BLURB: Record<Diet, string> = {
 export default function Onboarding() {
   const palette = colors.phases.luteal; // pre-onboarding default; once profile saved, app re-themes.
   const insets = useSafeAreaInsets();
-  const { completeOnboarding } = useApp();
+  const { completeOnboarding, hydrateFromServerProfile } = useApp();
   const [step, setStep] = useState<Step>("login");
-  const [provider, setProvider] = useState<"apple" | "google">("apple");
+  const [provider, setProvider] = useState<"apple" | "google" | "dev">("apple");
   const [name, setName] = useState("");
   const [energy, setEnergy] = useState(6);
   const [diet, setDiet] = useState<Diet>("vegetarian");
   const [homeCountry, setHomeCountry] = useState<CountryCode>("IN");
+  const [busy, setBusy] = useState<null | "apple" | "google" | "dev" | "finish">(null);
+  const [error, setError] = useState<string | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const fade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }).start();
   }, [fade]);
+
+  useEffect(() => {
+    let cancelled = false;
+    isAppleAvailable().then((ok) => {
+      if (!cancelled) setAppleAvailable(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Mocked sync: uses the same default the AppContext uses (12 days back).
   const previewLastPeriod = (() => {
@@ -69,21 +91,102 @@ export default function Onboarding() {
   const previewCycle = computeCycleState(previewLastPeriod, 28);
   const previewPhase = previewCycle.phase;
 
-  const handleLogin = (which: "apple" | "google") => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const afterSignIn = (which: "apple" | "google" | "dev", returnedName: string | null, alreadyOnboarded: boolean) => {
     setProvider(which);
+    if (returnedName) setName(returnedName);
+    if (alreadyOnboarded) {
+      // Returning user — skip the interview, the AppContext already
+      // hydrated profile from /auth/me.
+      return;
+    }
     setStep("interview-name");
   };
 
+  const handleApple = async () => {
+    if (busy) return;
+    setError(null);
+    setBusy("apple");
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const user = await signInWithApple();
+      const onboarded = !!user.onboardedAt;
+      if (onboarded) await hydrateFromServerProfile(user);
+      afterSignIn("apple", user.name ?? null, onboarded);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Apple sign-in failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleGoogle = async () => {
+    if (busy) return;
+    setError(null);
+    setBusy("google");
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const user = await signInWithGoogle();
+      const onboarded = !!user.onboardedAt;
+      if (onboarded) await hydrateFromServerProfile(user);
+      afterSignIn("google", user.name ?? null, onboarded);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleDev = async () => {
+    if (busy) return;
+    setError(null);
+    setBusy("dev");
+    try {
+      // Stable per-device handle so re-opening the preview returns the same
+      // dev user instead of creating a new one each time.
+      const HANDLE_KEY = "lumen.devSignIn.handle";
+      let handle = await AsyncStorage.getItem(HANDLE_KEY);
+      if (!handle) {
+        handle = `web-preview-${Math.random().toString(36).slice(2, 8)}`;
+        await AsyncStorage.setItem(HANDLE_KEY, handle);
+      }
+      const user = await signInDev(handle);
+      const onboarded = !!user.onboardedAt;
+      if (onboarded) await hydrateFromServerProfile(user);
+      afterSignIn("dev", user.name ?? null, onboarded);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Dev sign-in failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const finish = async () => {
+    if (busy) return;
     const cleanedName = name.trim() || "friend";
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    await completeOnboarding({ name: cleanedName, provider, energy, diet, homeCountry });
+    setBusy("finish");
+    setError(null);
+    try {
+      await completeOnboarding({
+        name: cleanedName,
+        provider: provider === "dev" ? "google" : provider,
+        energy,
+        diet,
+        homeCountry,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not save your profile",
+      );
+    } finally {
+      setBusy(null);
+    }
   };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top + 12;
+  const showWebFallback = Platform.OS === "web" || !isGoogleAvailable();
 
   return (
     <View style={[styles.root, { backgroundColor: palette.background }]}>
@@ -114,8 +217,13 @@ export default function Onboarding() {
             {step === "login" ? (
               <Login
                 palette={palette}
-                onApple={() => handleLogin("apple")}
-                onGoogle={() => handleLogin("google")}
+                onApple={handleApple}
+                onGoogle={handleGoogle}
+                onDev={handleDev}
+                appleAvailable={appleAvailable}
+                showWebFallback={showWebFallback}
+                busy={busy}
+                error={error}
               />
             ) : null}
 
@@ -160,6 +268,8 @@ export default function Onboarding() {
                 energy={energy}
                 setEnergy={setEnergy}
                 onFinish={finish}
+                busy={busy === "finish"}
+                error={error}
               />
             ) : null}
           </Animated.View>
@@ -173,10 +283,20 @@ function Login({
   palette,
   onApple,
   onGoogle,
+  onDev,
+  appleAvailable,
+  showWebFallback,
+  busy,
+  error,
 }: {
   palette: typeof colors.phases.luteal;
   onApple: () => void;
   onGoogle: () => void;
+  onDev: () => void;
+  appleAvailable: boolean;
+  showWebFallback: boolean;
+  busy: null | "apple" | "google" | "dev" | "finish";
+  error: string | null;
 }) {
   const router = useRouter();
   return (
@@ -192,35 +312,81 @@ function Login({
       </Text>
 
       <View style={{ marginTop: 32, gap: 12 }}>
-        <Pressable
-          onPress={onApple}
-          style={({ pressed }) => [
-            styles.socialBtn,
-            { backgroundColor: "#0a0a0a", opacity: pressed ? 0.85 : 1 },
-          ]}
-        >
-          <Feather name="smartphone" size={16} color="#ffffff" />
-          <Text style={[styles.socialText, { color: "#ffffff" }]}>Continue with Apple</Text>
-        </Pressable>
+        {appleAvailable ? (
+          <Pressable
+            onPress={onApple}
+            disabled={!!busy}
+            style={({ pressed }) => [
+              styles.socialBtn,
+              { backgroundColor: "#0a0a0a", opacity: busy ? 0.7 : pressed ? 0.85 : 1 },
+            ]}
+          >
+            {busy === "apple" ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Feather name="smartphone" size={16} color="#ffffff" />
+                <Text style={[styles.socialText, { color: "#ffffff" }]}>Continue with Apple</Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={onGoogle}
+          disabled={!!busy || showWebFallback}
           style={({ pressed }) => [
             styles.socialBtn,
             {
               backgroundColor: "#ffffff",
               borderWidth: 1,
               borderColor: "rgba(0,0,0,0.08)",
-              opacity: pressed ? 0.85 : 1,
+              opacity: busy || showWebFallback ? 0.55 : pressed ? 0.85 : 1,
             },
           ]}
         >
-          <Feather name="globe" size={16} color="#0a0a0a" />
-          <Text style={[styles.socialText, { color: "#0a0a0a" }]}>Continue with Google</Text>
+          {busy === "google" ? (
+            <ActivityIndicator color="#0a0a0a" />
+          ) : (
+            <>
+              <Feather name="globe" size={16} color="#0a0a0a" />
+              <Text style={[styles.socialText, { color: "#0a0a0a" }]}>Continue with Google</Text>
+            </>
+          )}
         </Pressable>
+        {showWebFallback ? (
+          <Pressable
+            onPress={onDev}
+            disabled={!!busy}
+            style={({ pressed }) => [
+              styles.socialBtn,
+              {
+                backgroundColor: palette.surface,
+                borderWidth: 1,
+                borderColor: palette.glassBorder,
+                opacity: busy ? 0.7 : pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            {busy === "dev" ? (
+              <ActivityIndicator color={palette.text} />
+            ) : (
+              <>
+                <Feather name="terminal" size={16} color={palette.text} />
+                <Text style={[styles.socialText, { color: palette.text }]}>
+                  Continue (web preview only)
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
       </View>
 
+      {error ? (
+        <Text style={[styles.errorText, { color: palette.primary }]}>{error}</Text>
+      ) : null}
+
       <Text style={[styles.privacy, { color: palette.textMuted }]}>
-        Prototype: sign-in is local. Nothing leaves your device.
+        We only store what you tell us. No advertising, ever.
       </Text>
       <View style={{ flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 10 }}>
         <Pressable onPress={() => router.push("/legal/privacy")}>
@@ -441,11 +607,15 @@ function InterviewEnergy({
   energy,
   setEnergy,
   onFinish,
+  busy,
+  error,
 }: {
   palette: typeof colors.phases.luteal;
   energy: number;
   setEnergy: (n: number) => void;
   onFinish: () => void;
+  busy: boolean;
+  error: string | null;
 }) {
   return (
     <View style={{ gap: 14 }}>
@@ -483,8 +653,12 @@ function InterviewEnergy({
         </View>
       </View>
 
-      <PrimaryBtn palette={palette} onPress={onFinish}>
-        Take me in
+      {error ? (
+        <Text style={[styles.errorText, { color: palette.primary }]}>{error}</Text>
+      ) : null}
+
+      <PrimaryBtn palette={palette} onPress={onFinish} disabled={busy}>
+        {busy ? "Saving…" : "Take me in"}
       </PrimaryBtn>
     </View>
   );
@@ -562,6 +736,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   socialText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  errorText: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 14, textAlign: "center" },
   privacy: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 18, textAlign: "center" },
   bubble: {
     maxWidth: "92%",

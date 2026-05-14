@@ -14,7 +14,181 @@ tags:
     description: Vent journal LLM analysis
   - name: vibe
     description: One-sentence "how do I feel" → home-screen directive
+  - name: auth
+    description: Apple/Google sign-in and user profile
 paths:
+  /auth/apple:
+    post:
+      operationId: signInWithApple
+      tags: [auth]
+      summary: Exchange a verified Apple identity token for a Lumen session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppleSignInInput"
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "401":
+          description: Identity token rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "503":
+          description: Auth provider misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+  /auth/google:
+    post:
+      operationId: signInWithGoogle
+      tags: [auth]
+      summary: Exchange a verified Google ID token for a Lumen session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleSignInInput"
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "401":
+          description: Identity token rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "503":
+          description: Auth provider misconfigured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+  /auth/dev:
+    post:
+      operationId: signInDev
+      tags: [auth]
+      summary: |
+        Development-only sign-in for the Replit web preview where native
+        Apple/Google flows are unavailable. Disabled in production.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DevSignInInput"
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "404":
+          description: Not enabled in this environment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      summary: Return the current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+  /auth/signout:
+    post:
+      operationId: signOut
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      summary: Invalidate the current session for this user
+      responses:
+        "204":
+          description: Signed out
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+  /auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      summary: Persist onboarding interview answers onto the user record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdateInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
   /healthz:
     get:
       operationId: healthCheck
@@ -370,4 +544,131 @@ components:
       required:
         - code
         - message
+    AuthProvider:
+      type: string
+      enum: [apple, google, dev]
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        provider:
+          $ref: "#/components/schemas/AuthProvider"
+        email:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        diet:
+          type: ["string", "null"]
+        homeCountry:
+          type: ["string", "null"]
+        energy:
+          type: ["integer", "null"]
+        lastPeriodIso:
+          type: ["string", "null"]
+        cycleLength:
+          type: ["integer", "null"]
+        onboardedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - id
+        - provider
+        - email
+        - name
+        - diet
+        - homeCountry
+        - energy
+        - lastPeriodIso
+        - cycleLength
+        - onboardedAt
+    AuthSession:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+      required:
+        - token
+        - user
+    AppleSignInInput:
+      type: object
+      properties:
+        identityToken:
+          type: string
+          minLength: 16
+        fullName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+      required:
+        - identityToken
+    GoogleSignInInput:
+      type: object
+      properties:
+        idToken:
+          type: string
+          minLength: 16
+      required:
+        - idToken
+    DevSignInInput:
+      type: object
+      properties:
+        handle:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required:
+        - handle
+    ProfileUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        diet:
+          type: string
+          minLength: 1
+          maxLength: 40
+        homeCountry:
+          type: string
+          minLength: 1
+          maxLength: 8
+        energy:
+          type: integer
+          minimum: 1
+          maximum: 10
+        lastPeriodIso:
+          type: string
+          minLength: 8
+          maxLength: 40
+        cycleLength:
+          type: integer
+          minimum: 14
+          maximum: 60
+        onboarded:
+          type: boolean
+    AuthError:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - bad_request
+            - unauthorized
+            - provider_unconfigured
+            - not_found
+            - internal
+        message:
+          type: string
+      required:
+        - code
+        - message
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 

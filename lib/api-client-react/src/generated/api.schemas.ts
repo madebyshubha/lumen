@@ -210,3 +210,108 @@ export interface VentAnalysisError {
   code: VentAnalysisErrorCode;
   message: string;
 }
+
+export type AuthProvider = (typeof AuthProvider)[keyof typeof AuthProvider];
+
+export const AuthProvider = {
+  apple: "apple",
+  google: "google",
+  dev: "dev",
+} as const;
+
+export interface UserProfile {
+  id: number;
+  provider: AuthProvider;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  name: string | null;
+  /** @nullable */
+  diet: string | null;
+  /** @nullable */
+  homeCountry: string | null;
+  /** @nullable */
+  energy: number | null;
+  /** @nullable */
+  lastPeriodIso: string | null;
+  /** @nullable */
+  cycleLength: number | null;
+  /** @nullable */
+  onboardedAt: string | null;
+}
+
+export interface AuthSession {
+  token: string;
+  user: UserProfile;
+}
+
+export interface AppleSignInInput {
+  /** @minLength 16 */
+  identityToken: string;
+  /** @nullable */
+  fullName?: string | null;
+  /** @nullable */
+  email?: string | null;
+}
+
+export interface GoogleSignInInput {
+  /** @minLength 16 */
+  idToken: string;
+}
+
+export interface DevSignInInput {
+  /**
+   * @minLength 1
+   * @maxLength 64
+   */
+  handle: string;
+}
+
+export interface ProfileUpdateInput {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  name?: string;
+  /**
+   * @minLength 1
+   * @maxLength 40
+   */
+  diet?: string;
+  /**
+   * @minLength 1
+   * @maxLength 8
+   */
+  homeCountry?: string;
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  energy?: number;
+  /**
+   * @minLength 8
+   * @maxLength 40
+   */
+  lastPeriodIso?: string;
+  /**
+   * @minimum 14
+   * @maximum 60
+   */
+  cycleLength?: number;
+  onboarded?: boolean;
+}
+
+export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
+
+export const AuthErrorCode = {
+  bad_request: "bad_request",
+  unauthorized: "unauthorized",
+  provider_unconfigured: "provider_unconfigured",
+  not_found: "not_found",
+  internal: "internal",
+} as const;
+
+export interface AuthError {
+  code: AuthErrorCode;
+  message: string;
+}

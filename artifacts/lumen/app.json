@@ -15,12 +15,15 @@
     },
     "ios": {
       "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "bundleIdentifier": "com.lumen.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Lumen uses your microphone so you can speak your vibe and journal entries instead of typing.",
         "NSSpeechRecognitionUsageDescription": "Lumen turns your voice into text on-device so you can log how you feel hands-free."
       }
     },
     "android": {
+      "package": "com.lumen.app",
       "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
@@ -35,6 +38,14 @@
       ],
       "expo-font",
       "expo-web-browser",
+      "expo-apple-authentication",
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.PLACEHOLDER"
+        }
+      ],
       [
         "expo-speech-recognition",
         {

@@ -18,8 +18,15 @@ import type {
 
 import type {
   AnalyzeVentRequest,
+  AppleSignInInput,
+  AuthError,
+  AuthSession,
+  DevSignInInput,
+  GoogleSignInInput,
   HealthStatus,
   InterpretVibeRequest,
+  ProfileUpdateInput,
+  UserProfile,
   VentAnalysis,
   VentAnalysisError,
   VibeDirective,
@@ -33,6 +40,496 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Exchange a verified Apple identity token for a Lumen session
+ */
+export const getSignInWithAppleUrl = () => {
+  return `/api/auth/apple`;
+};
+
+export const signInWithApple = async (
+  appleSignInInput: AppleSignInInput,
+  options?: RequestInit,
+): Promise<AuthSession> => {
+  return customFetch<AuthSession>(getSignInWithAppleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(appleSignInInput),
+  });
+};
+
+export const getSignInWithAppleMutationOptions = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInWithApple>>,
+    TError,
+    { data: BodyType<AppleSignInInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signInWithApple>>,
+  TError,
+  { data: BodyType<AppleSignInInput> },
+  TContext
+> => {
+  const mutationKey = ["signInWithApple"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signInWithApple>>,
+    { data: BodyType<AppleSignInInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return signInWithApple(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignInWithAppleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signInWithApple>>
+>;
+export type SignInWithAppleMutationBody = BodyType<AppleSignInInput>;
+export type SignInWithAppleMutationError = ErrorType<AuthError>;
+
+/**
+ * @summary Exchange a verified Apple identity token for a Lumen session
+ */
+export const useSignInWithApple = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInWithApple>>,
+    TError,
+    { data: BodyType<AppleSignInInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signInWithApple>>,
+  TError,
+  { data: BodyType<AppleSignInInput> },
+  TContext
+> => {
+  return useMutation(getSignInWithAppleMutationOptions(options));
+};
+
+/**
+ * @summary Exchange a verified Google ID token for a Lumen session
+ */
+export const getSignInWithGoogleUrl = () => {
+  return `/api/auth/google`;
+};
+
+export const signInWithGoogle = async (
+  googleSignInInput: GoogleSignInInput,
+  options?: RequestInit,
+): Promise<AuthSession> => {
+  return customFetch<AuthSession>(getSignInWithGoogleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(googleSignInInput),
+  });
+};
+
+export const getSignInWithGoogleMutationOptions = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInWithGoogle>>,
+    TError,
+    { data: BodyType<GoogleSignInInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signInWithGoogle>>,
+  TError,
+  { data: BodyType<GoogleSignInInput> },
+  TContext
+> => {
+  const mutationKey = ["signInWithGoogle"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signInWithGoogle>>,
+    { data: BodyType<GoogleSignInInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return signInWithGoogle(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignInWithGoogleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signInWithGoogle>>
+>;
+export type SignInWithGoogleMutationBody = BodyType<GoogleSignInInput>;
+export type SignInWithGoogleMutationError = ErrorType<AuthError>;
+
+/**
+ * @summary Exchange a verified Google ID token for a Lumen session
+ */
+export const useSignInWithGoogle = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInWithGoogle>>,
+    TError,
+    { data: BodyType<GoogleSignInInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signInWithGoogle>>,
+  TError,
+  { data: BodyType<GoogleSignInInput> },
+  TContext
+> => {
+  return useMutation(getSignInWithGoogleMutationOptions(options));
+};
+
+/**
+ * @summary Development-only sign-in for the Replit web preview where native
+Apple/Google flows are unavailable. Disabled in production.
+
+ */
+export const getSignInDevUrl = () => {
+  return `/api/auth/dev`;
+};
+
+export const signInDev = async (
+  devSignInInput: DevSignInInput,
+  options?: RequestInit,
+): Promise<AuthSession> => {
+  return customFetch<AuthSession>(getSignInDevUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(devSignInInput),
+  });
+};
+
+export const getSignInDevMutationOptions = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInDev>>,
+    TError,
+    { data: BodyType<DevSignInInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signInDev>>,
+  TError,
+  { data: BodyType<DevSignInInput> },
+  TContext
+> => {
+  const mutationKey = ["signInDev"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signInDev>>,
+    { data: BodyType<DevSignInInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return signInDev(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignInDevMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signInDev>>
+>;
+export type SignInDevMutationBody = BodyType<DevSignInInput>;
+export type SignInDevMutationError = ErrorType<AuthError>;
+
+/**
+ * @summary Development-only sign-in for the Replit web preview where native
+Apple/Google flows are unavailable. Disabled in production.
+
+ */
+export const useSignInDev = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signInDev>>,
+    TError,
+    { data: BodyType<DevSignInInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signInDev>>,
+  TError,
+  { data: BodyType<DevSignInInput> },
+  TContext
+> => {
+  return useMutation(getSignInDevMutationOptions(options));
+};
+
+/**
+ * @summary Return the current user
+ */
+export const getGetMeUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const getMe = async (options?: RequestInit): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getGetMeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMeQueryKey = () => {
+  return [`/api/auth/me`] as const;
+};
+
+export const getGetMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<AuthError>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMe>>> = ({
+    signal,
+  }) => getMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMeQueryResult = NonNullable<Awaited<ReturnType<typeof getMe>>>;
+export type GetMeQueryError = ErrorType<AuthError>;
+
+/**
+ * @summary Return the current user
+ */
+
+export function useGetMe<
+  TData = Awaited<ReturnType<typeof getMe>>,
+  TError = ErrorType<AuthError>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof getMe>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Invalidate the current session for this user
+ */
+export const getSignOutUrl = () => {
+  return `/api/auth/signout`;
+};
+
+export const signOut = async (options?: RequestInit): Promise<void> => {
+  return customFetch<void>(getSignOutUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSignOutMutationOptions = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signOut>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signOut>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["signOut"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signOut>>,
+    void
+  > = () => {
+    return signOut(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignOutMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signOut>>
+>;
+
+export type SignOutMutationError = ErrorType<AuthError>;
+
+/**
+ * @summary Invalidate the current session for this user
+ */
+export const useSignOut = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signOut>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signOut>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getSignOutMutationOptions(options));
+};
+
+/**
+ * @summary Persist onboarding interview answers onto the user record
+ */
+export const getUpdateProfileUrl = () => {
+  return `/api/auth/profile`;
+};
+
+export const updateProfile = async (
+  profileUpdateInput: ProfileUpdateInput,
+  options?: RequestInit,
+): Promise<UserProfile> => {
+  return customFetch<UserProfile>(getUpdateProfileUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(profileUpdateInput),
+  });
+};
+
+export const getUpdateProfileMutationOptions = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProfile>>,
+    TError,
+    { data: BodyType<ProfileUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProfile>>,
+  TError,
+  { data: BodyType<ProfileUpdateInput> },
+  TContext
+> => {
+  const mutationKey = ["updateProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProfile>>,
+    { data: BodyType<ProfileUpdateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProfile>>
+>;
+export type UpdateProfileMutationBody = BodyType<ProfileUpdateInput>;
+export type UpdateProfileMutationError = ErrorType<AuthError>;
+
+/**
+ * @summary Persist onboarding interview answers onto the user record
+ */
+export const useUpdateProfile = <
+  TError = ErrorType<AuthError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProfile>>,
+    TError,
+    { data: BodyType<ProfileUpdateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProfile>>,
+  TError,
+  { data: BodyType<ProfileUpdateInput> },
+  TContext
+> => {
+  return useMutation(getUpdateProfileMutationOptions(options));
+};
 
 /**
  * Returns server health status
