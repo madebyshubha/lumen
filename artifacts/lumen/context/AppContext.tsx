@@ -75,11 +75,18 @@ export type VentEntry = {
   analyzedOffline?: boolean;
 };
 
+export type ActivityLevel = "none" | "light" | "moderate" | "active";
+
 export type DailyLog = {
   date: string; // YYYY-MM-DD
   waterCups: number;
   sleepHours: number;
   mood?: number; // 0..4 face index
+  // Manual vitals — filled in by the user when no wearable is connected.
+  // Energy 1–5: 1 = drained, 5 = buzzing. When ≤ 2 it overrides todayHrvLow
+  // so HRV-adaptive task scaling kicks in without needing a watch.
+  manualEnergy?: number;
+  manualActivity?: ActivityLevel;
   completedTaskIds: string[];
   completedHabits: HabitTag[];
   context: DailyContext;
@@ -136,6 +143,8 @@ type AppContextValue = {
   removeMeal: (id: string) => Promise<void>;
   addConcern: (key: ConcernKey) => Promise<void>;
   removeConcern: (key: ConcernKey) => Promise<void>;
+  setManualEnergy: (level: number) => Promise<void>;
+  setManualActivity: (activity: ActivityLevel) => Promise<void>;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -155,6 +164,8 @@ function logHasActivity(log: DailyLog | undefined): boolean {
   if (log.mood !== undefined) return true;
   if (log.waterCups > 0) return true;
   if (log.sleepHours > 0) return true;
+  if (log.manualEnergy !== undefined) return true;
+  if (log.manualActivity !== undefined) return true;
   if (log.completedTaskIds.length > 0) return true;
   if (log.completedHabits.length > 0) return true;
   if (log.context.meals.length > 0) return true;
@@ -382,9 +393,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const tasks = useMemo<Task[]>(() => {
     if (!cycle || !profile) return [];
+    // Manual energy ≤ 2 (drained/low) overrides the wearable HRV signal so
+    // adaptive task scaling works even without a connected watch.
+    const hrvLow =
+      todayLog.manualEnergy !== undefined
+        ? todayLog.manualEnergy <= 2
+        : (health?.todayHrvLow ?? false);
     const base = generateDailyTasks({
       phase: cycle.phase,
-      hrvLow: health?.todayHrvLow ?? false,
+      hrvLow,
       diet: profile.diet,
       homeCountry: profile.homeCountry,
       travelling: todayLog.context.travelling,
@@ -397,6 +414,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     cycle,
     profile,
     health,
+    todayLog.manualEnergy,
     todayLog.context.travelling,
     todayLog.context.travelCountry,
     todayLog.context.concerns,
@@ -680,6 +698,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [upsertTodayLog],
   );
 
+  const setManualEnergy: AppContextValue["setManualEnergy"] = useCallback(
+    async (level) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        manualEnergy: log.manualEnergy === level ? undefined : level,
+      }));
+    },
+    [upsertTodayLog],
+  );
+
+  const setManualActivity: AppContextValue["setManualActivity"] = useCallback(
+    async (activity) => {
+      upsertTodayLog((log) => ({
+        ...log,
+        manualActivity: log.manualActivity === activity ? undefined : activity,
+      }));
+    },
+    [upsertTodayLog],
+  );
+
   const value = useMemo<AppContextValue>(
     () => ({
       ready,
@@ -714,6 +752,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       removeMeal,
       addConcern,
       removeConcern,
+      setManualEnergy,
+      setManualActivity,
     }),
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
@@ -721,6 +761,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       completeOnboarding, signOut, addVent, updateVent, setMood, toggleTask,
       addWater, setWater, addSleep, setSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,
+      setManualEnergy, setManualActivity,
     ],
   );
 

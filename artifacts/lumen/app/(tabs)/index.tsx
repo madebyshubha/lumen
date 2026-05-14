@@ -12,7 +12,7 @@ import { MissionCard } from "@/components/MissionCard";
 import { MorningBrief } from "@/components/MorningBrief";
 import { PhaseBackground } from "@/components/PhaseBackground";
 import { PhaseRing } from "@/components/PhaseRing";
-import { SleepQuickLog, WaterQuickLog } from "@/components/QuickLog";
+import { ActivityQuickLog, EnergyQuickLog, SleepQuickLog, WaterQuickLog } from "@/components/QuickLog";
 import { StreakChip } from "@/components/StreakChip";
 import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
@@ -223,11 +223,15 @@ export default function DashboardScreen() {
           {/* MEAL LOGGER */}
           <MealLogger />
 
-          {/* QUICK LOG — single-tap water (drops) and sleep (chips). No
-              typing, no +/- maths — tap once to log. */}
-          <View style={[styles.row, { marginBottom: 18 }]}>
+          {/* QUICK LOG — water, sleep, energy, movement. All three input
+              methods: tap a chip, type a number, or speak. No watch needed. */}
+          <View style={[styles.row, { marginBottom: 10 }]}>
             <WaterQuickLog />
             <SleepQuickLog />
+          </View>
+          <View style={[styles.row, { marginBottom: 18 }]}>
+            <EnergyQuickLog />
+            <ActivityQuickLog />
           </View>
 
           {/* LEAN-IN TASKS — phase-flavoured, important but not critical.
