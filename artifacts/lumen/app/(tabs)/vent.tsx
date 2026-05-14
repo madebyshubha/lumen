@@ -21,6 +21,7 @@ import { useApp, usePalette } from "@/context/AppContext";
 import { runVentAnalysis } from "@/lib/analyzer";
 import { HABIT_LABEL, SYMPTOM_LABEL } from "@/lib/symptoms";
 import { transcribeWithHostedAsr } from "@/lib/asr";
+import { concernLabel } from "@/lib/protocols";
 import { isVoiceAvailable, startVoice, type VoiceSession } from "@/lib/voice";
 
 export default function VentScreen() {
@@ -78,7 +79,10 @@ export default function VentScreen() {
           // place if anything fails or the user edited the text.
           setImproving(true);
           try {
-            const better = await transcribeWithHostedAsr(audio);
+            const better = await transcribeWithHostedAsr(audio, {
+              concerns: trackedConcernKeys.map((k) => concernLabel(k)),
+              recentVentTexts: vents.slice(0, 3).map((v) => v.text),
+            });
             if (
               better &&
               !userEditedRef.current &&

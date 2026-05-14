@@ -27,6 +27,84 @@ const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 const UPSTREAM_TIMEOUT_MS = 15_000;
 
+// Whisper accepts up to ~244 tokens of `prompt` to bias decoding toward
+// expected vocabulary. Keep a safe character budget below that ceiling.
+const MAX_PROMPT_CHARS = 880;
+
+// Curated PCOS glossary the model historically mishears. Includes common
+// supplements, medications, foods, and clinical terms users actually say.
+const PCOS_GLOSSARY = [
+  "PCOS",
+  "polycystic ovary syndrome",
+  "inositol",
+  "myo-inositol",
+  "d-chiro-inositol",
+  "ovasitol",
+  "metformin",
+  "spironolactone",
+  "berberine",
+  "NAC",
+  "n-acetylcysteine",
+  "spearmint",
+  "spearmint tea",
+  "vitex",
+  "DIM",
+  "magnesium glycinate",
+  "vitamin D",
+  "omega-3",
+  "ashwagandha",
+  "saw palmetto",
+  "zinc",
+  "chromium",
+  "alpha-lipoic acid",
+  "GLP-1",
+  "ozempic",
+  "estrogen",
+  "progesterone",
+  "testosterone",
+  "androgens",
+  "cortisol",
+  "insulin resistance",
+  "hirsutism",
+  "hair loss",
+  "cystic acne",
+  "follicular",
+  "ovulatory",
+  "luteal",
+  "menstrual",
+  "anovulatory",
+  "luteinizing hormone",
+  "FSH",
+  "LH",
+  "AMH",
+  "HRV",
+  "seed cycling",
+  "low glycemic",
+];
+
+function decodeHeader(value: string | string[] | undefined): string {
+  if (!value) return "";
+  const raw = Array.isArray(value) ? value.join(" ") : value;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function buildPrompt(userHint: string): string {
+  const glossary = PCOS_GLOSSARY.join(", ");
+  const cleaned = userHint.replace(/\s+/g, " ").trim();
+  const parts = cleaned
+    ? [`Context: ${cleaned}`, `Vocabulary: ${glossary}.`]
+    : [`Vocabulary: ${glossary}.`];
+  let prompt = parts.join(" ");
+  if (prompt.length > MAX_PROMPT_CHARS) {
+    prompt = prompt.slice(0, MAX_PROMPT_CHARS - 1).trimEnd() + "…";
+  }
+  return prompt;
+}
+
 function extensionForType(contentType: string): string {
   const lower = contentType.toLowerCase();
   if (lower.includes("wav") || lower.includes("wave")) return "wav";
@@ -76,6 +154,9 @@ router.post(
       bytes.set(buffer);
       const file = new File([bytes], filename, { type: contentType });
 
+      const userHint = decodeHeader(req.headers["x-asr-prompt"]);
+      const prompt = buildPrompt(userHint);
+
       const result = await openai.audio.transcriptions.create(
         {
           file,
@@ -83,6 +164,9 @@ router.post(
           // English-only product right now; passing the language hint
           // measurably improves accuracy on short clips.
           language: "en",
+          // Bias decoding toward PCOS vocabulary plus the caller's recent
+          // context (tracked concerns, recent vent texts).
+          prompt,
           // Plain text response keeps parsing trivial; we only need the words.
           response_format: "text",
         },
