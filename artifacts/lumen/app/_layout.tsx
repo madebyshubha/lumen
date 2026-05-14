@@ -67,6 +67,9 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="legal/privacy" options={{ presentation: "modal" }} />
+        <Stack.Screen name="legal/terms" options={{ presentation: "modal" }} />
+        <Stack.Screen name="legal/disclaimer" options={{ presentation: "modal" }} />
       </Stack>
     </HydrationGate>
   );

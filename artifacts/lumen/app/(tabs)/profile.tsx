@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -10,6 +11,7 @@ import { DIET_LABEL, countryName } from "@/lib/lifestyle";
 
 export default function ProfileScreen() {
   const palette = usePalette();
+  const router = useRouter();
   const { profile, cycle, health, vents, signOut } = useApp();
   if (!profile || !cycle || !health) return null;
 
@@ -89,6 +91,15 @@ export default function ProfileScreen() {
             </Text>
           </GlassCard>
 
+          <GlassCard style={{ marginTop: 16 }}>
+            <Text style={[styles.cardTitle, { color: palette.text, marginBottom: 4 }]}>
+              Legal
+            </Text>
+            <LegalLink palette={palette} icon="shield" label="Privacy policy" onPress={() => router.push("/legal/privacy")} />
+            <LegalLink palette={palette} icon="file-text" label="Terms of use" onPress={() => router.push("/legal/terms")} />
+            <LegalLink palette={palette} icon="alert-circle" label="Medical disclaimer" onPress={() => router.push("/legal/disclaimer")} />
+          </GlassCard>
+
           <Pressable
             onPress={signOut}
             style={({ pressed }) => [
@@ -108,6 +119,34 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </PhaseBackground>
+  );
+}
+
+function LegalLink({
+  palette,
+  icon,
+  label,
+  onPress,
+}: {
+  palette: ReturnType<typeof usePalette>;
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        rowStyles.row,
+        { borderBottomColor: palette.glassBorder, opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <View style={[rowStyles.iconWrap, { backgroundColor: palette.primarySoft }]}>
+        <Feather name={icon} size={13} color={palette.primary} />
+      </View>
+      <Text style={[rowStyles.label, { color: palette.text }]}>{label}</Text>
+      <Feather name="chevron-right" size={16} color={palette.textMuted} />
+    </Pressable>
   );
 }
 

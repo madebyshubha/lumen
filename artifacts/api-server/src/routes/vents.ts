@@ -11,6 +11,14 @@ import {
 } from "@workspace/api-zod";
 
 import { logger } from "../lib/logger";
+import {
+  cacheKey,
+  checkAndIncrementQuota,
+  decrementQuota,
+  getCached,
+  putCached,
+  ventClientId,
+} from "../lib/ventQuota";
 
 const router: IRouter = Router();
 
@@ -173,6 +181,31 @@ router.post("/vents/analyze", async (req, res) => {
 
   const body = parsed.data as AnalyzeVentRequest;
 
+  // Cache identical analyses for 12h — same vent text + same context shouldn't
+  // pay for a second LLM call. Hash includes the body so any context change
+  // (new phase, travel toggle, new tracked concern) misses the cache cleanly.
+  const key = cacheKey(body);
+  const cached = getCached<VentAnalysis>(key);
+  if (cached) {
+    res.json(cached);
+    return;
+  }
+
+  // Per-client daily quota — protects the LLM bill from a runaway client and
+  // gives us a clean degrade path (the app already has a local regex
+  // fallback). Anonymous clients keyed by IP until real auth lands.
+  const clientId = ventClientId({ ip: req.ip, headers: req.headers });
+  const quota = checkAndIncrementQuota(clientId);
+  if (!quota.allowed) {
+    logger.warn({ clientId, limit: quota.limit }, "vent analyze quota exceeded");
+    const error: VentAnalysisError = {
+      code: "llm_unavailable",
+      message: "Daily AI limit reached — using offline analysis",
+    };
+    res.status(429).json(error);
+    return;
+  }
+
   // Server-side timeout so a hung upstream call doesn't hold the request
   // open forever; clients also enforce their own (shorter) timeout.
   const UPSTREAM_TIMEOUT_MS = 12_000;
@@ -244,9 +277,13 @@ router.post("/vents/analyze", async (req, res) => {
       followUp,
     };
 
+    putCached(key, response);
     res.json(response);
   } catch (err) {
     clearTimeout(timeoutHandle);
+    // Quota was charged optimistically; refund it on upstream failure so the
+    // user isn't punished for our problem.
+    decrementQuota(clientId);
 
     // Distinguish timeout (server-side abort) from other failures so the
     // client can decide whether to retry or fall back differently.

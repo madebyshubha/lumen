@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -177,6 +178,7 @@ function Login({
   onApple: () => void;
   onGoogle: () => void;
 }) {
+  const router = useRouter();
   return (
     <View>
       <Text style={[styles.tagline, { color: palette.textMuted }]}>
@@ -220,6 +222,17 @@ function Login({
       <Text style={[styles.privacy, { color: palette.textMuted }]}>
         Prototype: sign-in is local. Nothing leaves your device.
       </Text>
+      <View style={{ flexDirection: "row", justifyContent: "center", gap: 14, marginTop: 10 }}>
+        <Pressable onPress={() => router.push("/legal/privacy")}>
+          <Text style={[styles.privacy, { color: palette.text, textDecorationLine: "underline" }]}>Privacy</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push("/legal/terms")}>
+          <Text style={[styles.privacy, { color: palette.text, textDecorationLine: "underline" }]}>Terms</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push("/legal/disclaimer")}>
+          <Text style={[styles.privacy, { color: palette.text, textDecorationLine: "underline" }]}>Medical disclaimer</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
