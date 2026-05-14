@@ -6,36 +6,6 @@ uri = "file://artifacts/lumen/assets/images/icon.png"
 type = "image"
 title = "lumen app icon"
 
-[[generated]]
-id = "2x3pSbUic3tSPxyD7r1iH"
-uri = "file://artifacts/lumen-landing/src/assets/images/hero-art.png"
-type = "image"
-title = "Soft illustration of a calm woman"
-
-[[generated]]
-id = "h_pVOxxdAMXvK7Mu5uSzD"
-uri = "file://artifacts/lumen-landing/src/assets/images/glow-menstrual.png"
-type = "image"
-title = "Deep indigo gradient background"
-
-[[generated]]
-id = "skkZWpulRXnTBQnb3DVPr"
-uri = "file://artifacts/lumen-landing/src/assets/images/glow-follicular.png"
-type = "image"
-title = "Garden green gradient background"
-
-[[generated]]
-id = "GUEaZHjNYhrtQ3nT-rSw3"
-uri = "file://artifacts/lumen-landing/src/assets/images/glow-ovulatory.png"
-type = "image"
-title = "Honey amber gradient background"
-
-[[generated]]
-id = "mSAKZ58QzGheLXnHOkwAx"
-uri = "file://artifacts/lumen-landing/src/assets/images/glow-luteal.png"
-type = "image"
-title = "Warm terracotta gradient background"
-
 [[outputs]]
 id = "JK_4LPix7iHBT5y_G0Hwl"
 uri = "file://screenshots/01-signin.jpg"
