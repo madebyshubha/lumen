@@ -18,6 +18,12 @@ import {
   type MockHealth,
 } from "@/lib/cycle";
 import {
+  isHealthBridgeAvailable,
+  readHealthFromDevice,
+  requestHealthPermissions as requestHealthPermissionsBridge,
+  type HealthPermissionResult,
+} from "@/lib/health";
+import {
   EMPTY_CONTEXT,
   scoreMeal,
   type ActiveConcern,
@@ -126,6 +132,15 @@ type AppContextValue = {
   clearVibe: () => Promise<void>;
   morningBrief: ProactiveBrief | null;
   dismissMorningBrief: () => Promise<void>;
+  // Real-wearable bridge surface. `healthBridgeAvailable` is true on a
+  // custom Expo dev client where the native modules autolinked; false in
+  // Expo Go and on web — those builds silently fall back to the mock
+  // generator. `healthSource` reflects which one the UI is currently
+  // rendering against.
+  healthBridgeAvailable: boolean;
+  healthSource: "device" | "mock";
+  healthPermissionGranted: boolean;
+  requestHealthPermissions: () => Promise<HealthPermissionResult>;
   // Directive that the home actually renders against — user vibe wins,
   // otherwise the (non-dismissed) morning brief reshapes the layout/tasks.
   activeDirective: import("@workspace/api-client-react").VibeDirective | null;
@@ -349,10 +364,59 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [vibe]);
 
-  const health = useMemo<MockHealth | null>(() => {
+  // Real-wearable hydration. The mock generator is the seed value so the
+  // home screen has something to render in the first paint while the
+  // HealthKit / Health Connect read is in flight; if the device read
+  // succeeds it replaces the mock in place. If it fails (no permissions,
+  // Expo Go, web), the mock stays and nothing else in the app has to know.
+  const healthBridgeAvailable = useMemo(() => isHealthBridgeAvailable(), []);
+  const [healthPermissionGranted, setHealthPermissionGranted] = useState(false);
+  const [deviceHealth, setDeviceHealth] = useState<MockHealth | null>(null);
+
+  const mockHealth = useMemo<MockHealth | null>(() => {
     if (!profile) return null;
     return generateMockHealth(profile.lastPeriodISO, profile.cycleLength);
   }, [profile]);
+
+  // Read from the device whenever the profile is available and the bridge
+  // is loaded. We deliberately do NOT gate on `healthPermissionGranted`:
+  // that flag is in-memory only, so on cold start it would always be false
+  // and we'd silently fall back to the mock for users who already granted
+  // access at onboarding. Instead, we always attempt the read — the
+  // bridge silently initialises HealthKit / re-checks Health Connect
+  // grants, and returns null when the OS hasn't authorised anything,
+  // which then falls through to the mock generator. The in-memory flag
+  // still flips to true after a successful read so other UI surfaces
+  // (badges, settings) can reflect that real data is flowing.
+  // We pin the read to a single fetchId so a stale response from a
+  // previous profile can't overwrite a newer one (sign-out + re-onboard).
+  const healthFetchRef = useRef(0);
+  useEffect(() => {
+    if (!profile) {
+      setDeviceHealth(null);
+      return;
+    }
+    if (!healthBridgeAvailable) {
+      setDeviceHealth(null);
+      return;
+    }
+    const fetchId = ++healthFetchRef.current;
+    (async () => {
+      const result = await readHealthFromDevice(profile.cycleLength, new Date());
+      if (healthFetchRef.current !== fetchId) return;
+      setDeviceHealth(result);
+      if (result) setHealthPermissionGranted(true);
+    })();
+  }, [profile, healthBridgeAvailable, healthPermissionGranted]);
+
+  const health = deviceHealth ?? mockHealth;
+  const healthSource: "device" | "mock" = deviceHealth ? "device" : "mock";
+
+  const requestHealthPermissions = useCallback(async (): Promise<HealthPermissionResult> => {
+    const result = await requestHealthPermissionsBridge();
+    if (result.granted) setHealthPermissionGranted(true);
+    return result;
+  }, []);
 
   const cycle = useMemo<CycleState | null>(() => {
     if (!profile) return null;
@@ -816,6 +880,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       morningBrief,
       dismissMorningBrief,
       activeDirective,
+      healthBridgeAvailable,
+      healthSource,
+      healthPermissionGranted,
+      requestHealthPermissions,
       completeOnboarding,
       hydrateFromServerProfile,
       signOut,
@@ -839,6 +907,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       ready, profile, cycle, health, palette, vents, todayLog, tasks, streak,
       vibe, vibeLoading, applyVibe, clearVibe,
+      morningBrief, dismissMorningBrief, activeDirective,
+      healthBridgeAvailable, healthSource, healthPermissionGranted,
+      requestHealthPermissions,
       completeOnboarding, hydrateFromServerProfile, signOut, addVent, updateVent, setMood, toggleTask,
       addWater, setWater, addSleep, setSleep,
       setLocation, setTravelling, addMeal, removeMeal, addConcern, removeConcern,

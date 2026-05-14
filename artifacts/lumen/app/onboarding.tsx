@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { computeCycleState } from "@/lib/cycle";
+import { HEALTH_CATEGORIES } from "@/lib/health";
 import {
   COUNTRIES,
   DIET_LABEL,
@@ -41,6 +42,7 @@ type Step =
   | "interview-name"
   | "interview-diet"
   | "interview-country"
+  | "interview-permissions"
   | "interview-phase"
   | "interview-energy";
 
@@ -56,7 +58,12 @@ const DIET_BLURB: Record<Diet, string> = {
 export default function Onboarding() {
   const palette = colors.phases.luteal; // pre-onboarding default; once profile saved, app re-themes.
   const insets = useSafeAreaInsets();
-  const { completeOnboarding, hydrateFromServerProfile } = useApp();
+  const {
+    completeOnboarding,
+    hydrateFromServerProfile,
+    healthBridgeAvailable,
+    requestHealthPermissions,
+  } = useApp();
   const [step, setStep] = useState<Step>("login");
   const [provider, setProvider] = useState<"apple" | "google" | "dev">("apple");
   const [name, setName] = useState("");
@@ -250,7 +257,21 @@ export default function Onboarding() {
                 palette={palette}
                 country={homeCountry}
                 setCountry={setHomeCountry}
-                onContinue={() => setStep("interview-phase")}
+                onContinue={() =>
+                  setStep(healthBridgeAvailable ? "interview-permissions" : "interview-phase")
+                }
+              />
+            ) : null}
+
+            {step === "interview-permissions" ? (
+              <InterviewPermissions
+                palette={palette}
+                onRequest={async () => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  await requestHealthPermissions();
+                  setStep("interview-phase");
+                }}
+                onSkip={() => setStep("interview-phase")}
               />
             ) : null}
 
@@ -571,6 +592,54 @@ function InterviewCountry({
         })}
       </View>
       <PrimaryBtn palette={palette} onPress={onContinue}>Continue</PrimaryBtn>
+    </View>
+  );
+}
+
+function InterviewPermissions({
+  palette,
+  onRequest,
+  onSkip,
+}: {
+  palette: typeof colors.phases.luteal;
+  onRequest: () => void;
+  onSkip: () => void;
+}) {
+  const platformLabel =
+    Platform.OS === "ios" ? "Apple Health" : Platform.OS === "android" ? "Health Connect" : "your wearable";
+  return (
+    <View style={{ gap: 14 }}>
+      <ChatBubble palette={palette}>
+        I work best when I can read your real signals from {platformLabel}. Here's exactly what I'd like access to — and why.
+      </ChatBubble>
+      <View
+        style={[
+          styles.energyCard,
+          { backgroundColor: palette.surface, borderColor: palette.glassBorder, alignItems: "stretch", gap: 14 },
+        ]}
+      >
+        {HEALTH_CATEGORIES.map((c) => (
+          <View key={c.key} style={{ gap: 4 }}>
+            <Text style={{ color: palette.text, fontFamily: "Outfit_600SemiBold", fontSize: 14 }}>
+              {c.label}
+            </Text>
+            <Text style={{ color: palette.textMuted, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 }}>
+              {c.detail}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text style={[styles.helper, { color: palette.textMuted }]}>
+        Read-only. Lumen never writes back to {platformLabel}.
+      </Text>
+      <PrimaryBtn palette={palette} onPress={onRequest}>
+        Connect {platformLabel}
+      </PrimaryBtn>
+      <Pressable onPress={onSkip} style={{ alignSelf: "center", paddingVertical: 8 }}>
+        <Text style={{ color: palette.textMuted, fontFamily: "Inter_500Medium", fontSize: 13 }}>
+          Skip for now
+        </Text>
+      </Pressable>
     </View>
   );
 }
