@@ -235,6 +235,8 @@ router.post("/vents/analyze", async (req, res) => {
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
+      // Refund the quota — the user shouldn't pay for an empty upstream reply.
+      decrementQuota(clientId);
       const error: VentAnalysisError = {
         code: "llm_unavailable",
         message: "Empty response from upstream",

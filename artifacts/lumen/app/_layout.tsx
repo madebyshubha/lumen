@@ -37,7 +37,10 @@ function OnboardingGate() {
   useEffect(() => {
     if (!ready) return;
     const inOnboarding = segments[0] === "onboarding";
-    if (!profile && !inOnboarding) {
+    // Legal screens (privacy/terms/medical disclaimer) must remain reachable
+    // from onboarding even when no profile exists, so the gate exempts them.
+    const inLegal = segments[0] === "legal";
+    if (!profile && !inOnboarding && !inLegal) {
       router.replace("/onboarding");
     } else if (profile && inOnboarding) {
       router.replace("/(tabs)");
