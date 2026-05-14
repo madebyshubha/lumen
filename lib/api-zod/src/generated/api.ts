@@ -388,3 +388,21 @@ export const InterpretVibeResponse = zod
   .describe(
     "Full server-driven directive for reshaping the home screen. The\nserver controls every layout decision so the client renders this\nverbatim — it does not re-derive layout from mood alone.\n",
   );
+
+/**
+ * Accepts a short raw audio recording (`audio/wav` or `audio/m4a`) of a
+vent and returns a hosted-Whisper transcript. The client should still
+show the on-device transcript live as a fallback while waiting for the
+hosted result, and gracefully ignore failures.
+
+ * @summary Re-transcribe vent audio via hosted ASR
+ */
+export const TranscribeVentAudioResponse = zod
+  .object({
+    transcript: zod
+      .string()
+      .describe(
+        "Hosted-Whisper transcript of the audio (may be empty if no speech detected).",
+      ),
+  })
+  .describe("Result of a hosted ASR re-transcription pass.");

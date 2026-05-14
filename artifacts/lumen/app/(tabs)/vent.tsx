@@ -20,6 +20,7 @@ import { TopBar } from "@/components/TopBar";
 import { useApp, usePalette } from "@/context/AppContext";
 import { runVentAnalysis } from "@/lib/analyzer";
 import { HABIT_LABEL, SYMPTOM_LABEL } from "@/lib/symptoms";
+import { transcribeWithHostedAsr } from "@/lib/asr";
 import { isVoiceAvailable, startVoice, type VoiceSession } from "@/lib/voice";
 
 export default function VentScreen() {
@@ -36,9 +37,15 @@ export default function VentScreen() {
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [improving, setImproving] = useState(false);
   const [lastVentId, setLastVentId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef<VoiceSession | null>(null);
+  // Track which on-device transcript the hosted ASR result is allowed to
+  // replace. If the user has edited the text by hand in the meantime, we
+  // leave their edit alone.
+  const onDeviceTranscriptRef = useRef<string>("");
+  const userEditedRef = useRef<boolean>(false);
   const voice = isVoiceAvailable();
 
   useEffect(() => () => sessionRef.current?.stop(), []);
@@ -51,12 +58,39 @@ export default function VentScreen() {
   const start = () => {
     setError(null);
     setText("");
+    onDeviceTranscriptRef.current = "";
+    userEditedRef.current = false;
     if (voice) {
       const session = startVoice({
-        onPartial: (t) => setText(t),
-        onFinal: (t) => setText(t),
+        onPartial: (t) => {
+          onDeviceTranscriptRef.current = t;
+          setText(t);
+        },
+        onFinal: (t) => {
+          onDeviceTranscriptRef.current = t;
+          setText(t);
+        },
         onError: (e) => setError(e),
         onEnd: () => setRecording(false),
+        onAudio: async (audio) => {
+          // Re-transcribe via hosted Whisper for higher accuracy on symptom
+          // names, foods and numbers. Keeps the on-device transcript in
+          // place if anything fails or the user edited the text.
+          setImproving(true);
+          try {
+            const better = await transcribeWithHostedAsr(audio);
+            if (
+              better &&
+              !userEditedRef.current &&
+              better.toLowerCase() !== onDeviceTranscriptRef.current.trim().toLowerCase()
+            ) {
+              setText(better);
+              onDeviceTranscriptRef.current = better;
+            }
+          } finally {
+            setImproving(false);
+          }
+        },
       });
       if (!session) {
         setError("Couldn't start voice. Type instead.");
@@ -67,6 +101,11 @@ export default function VentScreen() {
     } else {
       setRecording(true);
     }
+  };
+
+  const onChangeText = (v: string) => {
+    if (v !== onDeviceTranscriptRef.current) userEditedRef.current = true;
+    setText(v);
   };
 
   const stop = () => {
@@ -178,7 +217,7 @@ export default function VentScreen() {
 
               <TextInput
                 value={text}
-                onChangeText={setText}
+                onChangeText={onChangeText}
                 placeholder="I'm feeling bloated and craving sugar…"
                 placeholderTextColor={palette.textMuted}
                 multiline
@@ -193,6 +232,15 @@ export default function VentScreen() {
                   },
                 ]}
               />
+
+              {improving ? (
+                <View style={styles.improvingRow}>
+                  <ActivityIndicator size="small" color={palette.primary} />
+                  <Text style={[styles.improvingText, { color: palette.textMuted }]}>
+                    Sharpening what you said…
+                  </Text>
+                </View>
+              ) : null}
 
               {error ? (
                 <Text style={[styles.error, { color: palette.text }]}>{error}</Text>
@@ -462,6 +510,13 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   error: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 8 },
+  improvingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+  },
+  improvingText: { fontSize: 12, fontFamily: "Inter_500Medium" },
   submit: {
     marginTop: 12,
     paddingVertical: 14,

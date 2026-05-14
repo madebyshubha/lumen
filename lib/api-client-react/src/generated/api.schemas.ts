@@ -211,6 +211,14 @@ export interface VentAnalysisError {
   message: string;
 }
 
+/**
+ * Result of a hosted ASR re-transcription pass.
+ */
+export interface AsrTranscript {
+  /** Hosted-Whisper transcript of the audio (may be empty if no speech detected). */
+  transcript: string;
+}
+
 export type AuthProvider = (typeof AuthProvider)[keyof typeof AuthProvider];
 
 export const AuthProvider = {

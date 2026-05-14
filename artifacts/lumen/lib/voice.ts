@@ -1,8 +1,11 @@
 import { Platform } from "react-native";
 
 // Voice transcription wrapper.
-//   • Web  → Web SpeechRecognition (Chrome/Edge/Safari).
-//   • iOS / Android → expo-speech-recognition (on-device when possible).
+//   • Web  → Web SpeechRecognition (Chrome/Edge/Safari) + MediaRecorder for
+//     a parallel audio capture we can re-transcribe via hosted Whisper.
+//   • iOS / Android → expo-speech-recognition (on-device when possible),
+//     with `recordingOptions.persist` so we get a saved audio file alongside
+//     the live transcript.
 // Requires a custom Expo dev client on native — expo-speech-recognition is
 // not available in Expo Go.
 
@@ -51,6 +54,12 @@ type NativeResultEvent = {
   results: { transcript: string; confidence?: number }[];
 };
 type NativeErrorEvent = { error?: string; message?: string };
+type NativeAudioEvent = { uri: string | null };
+type NativeRecordingOptions = {
+  persist: boolean;
+  outputDirectory?: string;
+  outputFileName?: string;
+};
 type NativeModule = {
   requestPermissionsAsync: () => Promise<{ granted: boolean }>;
   start: (opts: {
@@ -58,11 +67,12 @@ type NativeModule = {
     interimResults?: boolean;
     continuous?: boolean;
     requiresOnDeviceRecognition?: boolean;
+    recordingOptions?: NativeRecordingOptions;
   }) => void;
   stop: () => void;
   abort?: () => void;
   addListener: (
-    event: "result" | "error" | "end" | "start",
+    event: "result" | "error" | "end" | "start" | "audiostart" | "audioend",
     cb: (e: unknown) => void,
   ) => NativeSubscription;
 };
@@ -90,6 +100,13 @@ export function isVoiceAvailable(): boolean {
   return getNativeModule() !== null;
 }
 
+export type CapturedAudio = {
+  // For native: a `file://` URI on disk.
+  // For web: a Blob: URL we can fetch().then(r => r.blob()).
+  uri: string;
+  mimeType: string;
+};
+
 export type VoiceSession = {
   stop: () => void;
 };
@@ -99,6 +116,10 @@ type Handlers = {
   onFinal: (text: string) => void;
   onError: (err: string) => void;
   onEnd: () => void;
+  // Fired once recording stops with a captured audio file/blob the caller
+  // can ship to a hosted ASR for re-transcription. Not fired if audio
+  // capture failed or isn't supported.
+  onAudio?: (audio: CapturedAudio) => void;
 };
 
 export function startVoice(handlers: Handlers): VoiceSession | null {
@@ -107,6 +128,51 @@ export function startVoice(handlers: Handlers): VoiceSession | null {
 }
 
 // ---- Web implementation ---------------------------------------------------
+
+type MediaRecorderLike = {
+  state: string;
+  ondataavailable: ((e: { data: Blob }) => void) | null;
+  onstop: (() => void) | null;
+  onerror: ((e: unknown) => void) | null;
+  start: (timeslice?: number) => void;
+  stop: () => void;
+  mimeType?: string;
+};
+type MediaRecorderCtor = new (
+  stream: MediaStream,
+  options?: { mimeType?: string },
+) => MediaRecorderLike;
+
+function getWebMediaRecorder(): MediaRecorderCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { MediaRecorder?: MediaRecorderCtor };
+  return w.MediaRecorder ?? null;
+}
+
+function pickWebRecorderMime(Ctor: MediaRecorderCtor): string | undefined {
+  // Reach into the static `isTypeSupported` if available; otherwise let the
+  // browser pick its default (which is typically webm/opus on Chromium and
+  // mp4/aac on Safari — Whisper handles both).
+  const Static = Ctor as unknown as {
+    isTypeSupported?: (type: string) => boolean;
+  };
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg;codecs=opus",
+  ];
+  if (typeof Static.isTypeSupported === "function") {
+    for (const t of candidates) {
+      try {
+        if (Static.isTypeSupported(t)) return t;
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return undefined;
+}
 
 function startWebVoice(handlers: Handlers): VoiceSession | null {
   const Ctor = getWebCtor();
@@ -117,6 +183,83 @@ function startWebVoice(handlers: Handlers): VoiceSession | null {
   rec.lang = "en-US";
 
   let finalText = "";
+  let stopped = false;
+
+  // Parallel audio capture for hosted Whisper re-transcription. We start it
+  // best-effort — a missing MediaRecorder, denied permission, or an error
+  // mid-stream just means we keep the on-device transcript without an upload.
+  const Recorder = getWebMediaRecorder();
+  let mediaRecorder: MediaRecorderLike | null = null;
+  let mediaStream: MediaStream | null = null;
+  const audioChunks: Blob[] = [];
+  let audioMime: string | undefined;
+
+  const teardownStream = () => {
+    if (mediaStream) {
+      try {
+        mediaStream.getTracks().forEach((t) => t.stop());
+      } catch {
+        // ignore
+      }
+      mediaStream = null;
+    }
+    mediaRecorder = null;
+  };
+
+  const stopRecorderAndEmitAudio = () => {
+    if (!mediaRecorder) return;
+    const r = mediaRecorder;
+    r.onstop = () => {
+      try {
+        if (audioChunks.length > 0 && handlers.onAudio) {
+          const type = audioMime ?? r.mimeType ?? "audio/webm";
+          const blob = new Blob(audioChunks, { type });
+          const url = URL.createObjectURL(blob);
+          handlers.onAudio({ uri: url, mimeType: type });
+        }
+      } catch {
+        // swallow — audio capture is best-effort
+      } finally {
+        teardownStream();
+      }
+    };
+    try {
+      if (r.state !== "inactive") r.stop();
+      else teardownStream();
+    } catch {
+      teardownStream();
+    }
+  };
+
+  if (Recorder && typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        if (stopped) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        mediaStream = stream;
+        try {
+          audioMime = pickWebRecorderMime(Recorder);
+          mediaRecorder = audioMime
+            ? new Recorder(stream, { mimeType: audioMime })
+            : new Recorder(stream);
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) audioChunks.push(e.data);
+          };
+          mediaRecorder.onerror = () => teardownStream();
+          mediaRecorder.start();
+        } catch {
+          teardownStream();
+        }
+      })
+      .catch(() => {
+        // mic permission denied or no input — fall back silently to the
+        // on-device transcript only.
+      });
+  }
+
   rec.onresult = (e) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -130,15 +273,19 @@ function startWebVoice(handlers: Handlers): VoiceSession | null {
   rec.onend = () => {
     handlers.onFinal(finalText.trim());
     handlers.onEnd();
+    stopRecorderAndEmitAudio();
   };
   try {
     rec.start();
   } catch (err) {
     handlers.onError(err instanceof Error ? err.message : String(err));
+    teardownStream();
     return null;
   }
   return {
     stop: () => {
+      if (stopped) return;
+      stopped = true;
       try {
         rec.stop();
       } catch {
@@ -156,6 +303,8 @@ function startNativeVoice(handlers: Handlers): VoiceSession | null {
 
   let finalText = "";
   let stopped = false;
+  let audioUri: string | null = null;
+  let audioEmitted = false;
   const subs: NativeSubscription[] = [];
 
   const cleanup = () => {
@@ -165,6 +314,16 @@ function startNativeVoice(handlers: Handlers): VoiceSession | null {
       } catch {
         // ignore
       }
+    }
+  };
+
+  const emitAudioIfReady = () => {
+    if (audioEmitted) return;
+    if (!audioUri) return;
+    audioEmitted = true;
+    if (handlers.onAudio) {
+      // expo-speech-recognition writes a `.wav` file on both iOS and Android.
+      handlers.onAudio({ uri: audioUri, mimeType: "audio/wav" });
     }
   };
 
@@ -194,11 +353,21 @@ function startNativeVoice(handlers: Handlers): VoiceSession | null {
     }),
   );
   subs.push(
+    mod.addListener("audioend", (raw) => {
+      const e = raw as NativeAudioEvent;
+      if (e.uri) audioUri = e.uri;
+      emitAudioIfReady();
+    }),
+  );
+  subs.push(
     mod.addListener("end", () => {
       if (stopped) return;
       stopped = true;
       handlers.onFinal(finalText.trim());
       handlers.onEnd();
+      // The audioend event sometimes lands just before `end`; emit here too
+      // so we don't drop the file on the floor if it arrived first.
+      emitAudioIfReady();
       cleanup();
     }),
   );
@@ -221,6 +390,9 @@ function startNativeVoice(handlers: Handlers): VoiceSession | null {
         lang: "en-US",
         interimResults: true,
         continuous: true,
+        recordingOptions: {
+          persist: true,
+        },
       });
     } catch (err) {
       if (stopped) return;
@@ -249,7 +421,13 @@ function startNativeVoice(handlers: Handlers): VoiceSession | null {
         try {
           handlers.onEnd();
         } finally {
-          cleanup();
+          // The audioend event for a manual stop arrives slightly later; we
+          // still want to ship that file when it shows up, so leave the
+          // listener attached for a short grace window before cleaning up.
+          setTimeout(() => {
+            emitAudioIfReady();
+            cleanup();
+          }, 1200);
         }
       }
     },

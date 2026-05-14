@@ -16,6 +16,8 @@ tags:
     description: One-sentence "how do I feel" → home-screen directive
   - name: auth
     description: Apple/Google sign-in and user profile
+  - name: asr
+    description: Hosted speech-to-text re-transcription (Whisper) for vent recordings
 paths:
   /auth/apple:
     post:
@@ -283,6 +285,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VentAnalysisError"
+  /asr/transcribe:
+    post:
+      operationId: transcribeVentAudio
+      tags: [asr]
+      summary: Re-transcribe vent audio via hosted ASR
+      description: |
+        Accepts a short raw audio recording (`audio/wav` or `audio/m4a`) of a
+        vent and returns a hosted-Whisper transcript. The client should still
+        show the on-device transcript live as a fallback while waiting for the
+        hosted result, and gracefully ignore failures.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          audio/wav:
+            schema:
+              type: string
+              format: binary
+          audio/m4a:
+            schema:
+              type: string
+              format: binary
+          audio/mp4:
+            schema:
+              type: string
+              format: binary
+          audio/webm:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Hosted transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsrTranscript"
+        "400":
+          description: Invalid input (missing or unsupported audio)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
+        "503":
+          description: ASR upstream unavailable; client should keep on-device transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
+        "504":
+          description: ASR upstream timed out; client should keep on-device transcript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VentAnalysisError"
 components:
   schemas:
     HealthStatus:
@@ -544,6 +604,15 @@ components:
       required:
         - code
         - message
+    AsrTranscript:
+      type: object
+      description: Result of a hosted ASR re-transcription pass.
+      properties:
+        transcript:
+          type: string
+          description: Hosted-Whisper transcript of the audio (may be empty if no speech detected).
+      required:
+        - transcript
     AuthProvider:
       type: string
       enum: [apple, google, dev]

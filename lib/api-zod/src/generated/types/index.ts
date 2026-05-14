@@ -9,6 +9,7 @@
 export * from "./analyzeVentContext";
 export * from "./analyzeVentRequest";
 export * from "./appleSignInInput";
+export * from "./asrTranscript";
 export * from "./authError";
 export * from "./authErrorCode";
 export * from "./authProvider";

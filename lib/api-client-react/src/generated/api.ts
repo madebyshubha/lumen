@@ -19,6 +19,7 @@ import type {
 import type {
   AnalyzeVentRequest,
   AppleSignInInput,
+  AsrTranscript,
   AuthError,
   AuthSession,
   DevSignInInput,
@@ -786,4 +787,98 @@ export const useInterpretVibe = <
   TContext
 > => {
   return useMutation(getInterpretVibeMutationOptions(options));
+};
+
+/**
+ * Accepts a short raw audio recording (`audio/wav` or `audio/m4a`) of a
+vent and returns a hosted-Whisper transcript. The client should still
+show the on-device transcript live as a fallback while waiting for the
+hosted result, and gracefully ignore failures.
+
+ * @summary Re-transcribe vent audio via hosted ASR
+ */
+export const getTranscribeVentAudioUrl = () => {
+  return `/api/asr/transcribe`;
+};
+
+export const transcribeVentAudio = async (
+  transcribeVentAudioBody: Blob,
+  options?: RequestInit,
+): Promise<AsrTranscript> => {
+  return customFetch<AsrTranscript>(getTranscribeVentAudioUrl(), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      ...options?.headers,
+    },
+    body: JSON.stringify(transcribeVentAudioBody),
+  });
+};
+
+export const getTranscribeVentAudioMutationOptions = <
+  TError = ErrorType<VentAnalysisError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transcribeVentAudio>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof transcribeVentAudio>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  const mutationKey = ["transcribeVentAudio"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof transcribeVentAudio>>,
+    { data: BodyType<Blob> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return transcribeVentAudio(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TranscribeVentAudioMutationResult = NonNullable<
+  Awaited<ReturnType<typeof transcribeVentAudio>>
+>;
+export type TranscribeVentAudioMutationBody = BodyType<Blob>;
+export type TranscribeVentAudioMutationError = ErrorType<VentAnalysisError>;
+
+/**
+ * @summary Re-transcribe vent audio via hosted ASR
+ */
+export const useTranscribeVentAudio = <
+  TError = ErrorType<VentAnalysisError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof transcribeVentAudio>>,
+    TError,
+    { data: BodyType<Blob> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof transcribeVentAudio>>,
+  TError,
+  { data: BodyType<Blob> },
+  TContext
+> => {
+  return useMutation(getTranscribeVentAudioMutationOptions(options));
 };
