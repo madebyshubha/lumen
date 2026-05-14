@@ -158,7 +158,11 @@ export function MealLogger() {
         setListening(false);
         sessionRef.current = null;
         if (err === "not-allowed") {
-          setVoiceHint("Microphone permission denied. Enable it in browser settings.");
+          setVoiceHint(
+            Platform.OS === "web"
+              ? "Microphone permission denied. Enable it in browser settings."
+              : "Microphone permission denied. Enable it in your device settings.",
+          );
         } else {
           setVoiceHint("Voice not available — type instead.");
         }

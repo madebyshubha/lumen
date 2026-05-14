@@ -14,9 +14,15 @@
       "backgroundColor": "#fff3e9"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Lumen uses your microphone so you can speak your vibe and journal entries instead of typing.",
+        "NSSpeechRecognitionUsageDescription": "Lumen turns your voice into text on-device so you can log how you feel hands-free."
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": ["android.permission.RECORD_AUDIO"]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,7 +34,15 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Lumen uses your microphone so you can speak your vibe and journal entries instead of typing.",
+          "speechRecognitionPermission": "Lumen turns your voice into text on-device so you can log how you feel hands-free.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
