@@ -3,6 +3,8 @@
 # compiled output
 dist
 tmp
+artifacts/lumen/dist/
+artifacts/lumen/static-build/
 out-tsc
 *.tsbuildinfo
 .expo
