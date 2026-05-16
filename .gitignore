@@ -5,6 +5,7 @@ dist
 tmp
 artifacts/lumen/dist/
 artifacts/lumen/static-build/
+artifacts/lumen-landing/dist/
 out-tsc
 *.tsbuildinfo
 .expo
